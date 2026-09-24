@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "webforms-links-generator-backend"
-version = "0.1.0"
+version = "0.1.1"
 description = "Flask backend for the Webforms Links Generator"
 authors = []
 package-mode = false
