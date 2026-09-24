@@ -174,19 +174,19 @@ def create_app() -> Flask:
             )
         except requests.RequestException:
             app.logger.exception("Could not reach JWT API")
-            return jsonify({"message": "No se pudo generar el enlace."}), 502
+            return jsonify({"message": "No s'ha pogut generar l'enllaç."}), 502
 
         if not response.ok:
             app.logger.warning("JWT API returned status %s", response.status_code)
-            return jsonify({"message": "La API externa no pudo generar el token."}), 502
+            return jsonify({"message": "L'API externa no pot generar el token."}), 502
 
         try:
             token = response.json()["data"]["token"]
         except (ValueError, KeyError, TypeError):
-            return jsonify({"message": "La API externa no devolvió un JWT válido."}), 502
+            return jsonify({"message": "L'API externa no ha retornat un JWT vàlid."}), 502
 
         if not isinstance(token, str) or not token:
-            return jsonify({"message": "La API externa no devolvió un JWT válido."}), 502
+            return jsonify({"message": "L'API externa no ha retornat un JWT vàlid."}), 502
 
         if form_url:
             return jsonify({"link": _link_with_token(form_url, token)})
