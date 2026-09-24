@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "webforms-links-generator-backend"
+version = "0.1.0"
+description = "Flask backend for the Webforms Links Generator"
+authors = []
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+flask = "3.0.3"
+gunicorn = "22.0.0"
+requests = "2.32.3"
+python-dotenv = "^1.0.1"
+
+[tool.poetry.group.test.dependencies]
+pytest = "8.3.3"
+
+[build-system]
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"

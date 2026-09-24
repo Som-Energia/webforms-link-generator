@@ -1,0 +1,13 @@
+services:
+  webforms-links-generator:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+      ADMIN_GATEWAY_SECRET: ${ADMIN_GATEWAY_SECRET:?set ADMIN_GATEWAY_SECRET}
+      JWT_API_URL: ${JWT_API_URL:?set JWT_API_URL}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+    restart: unless-stopped
