@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 COOKIE_NAME = "admin_session"
 SESSION_MAX_AGE = 60 * 60 * 8
-SOCIAL_TARIFF_URL = "https://www.somenergia.coop/ca/formulari-contractacio-periodes"
+DEFAULT_FORM_URL = "https://www.somenergia.coop/ca/formulari-contractacio-periodes"
 
 
 def _custom_form_url(value: object) -> str | None:
@@ -191,7 +191,7 @@ def create_app() -> Flask:
         if form_url:
             return jsonify({"link": _link_with_token(form_url, token)})
 
-        return jsonify({"link": f"{SOCIAL_TARIFF_URL}?form_type=domestic&token={token}"})
+        return jsonify({"link": f"{DEFAULT_FORM_URL}?form_type=domestic&token={token}"})
 
     @app.get("/")
     def root() -> object:
