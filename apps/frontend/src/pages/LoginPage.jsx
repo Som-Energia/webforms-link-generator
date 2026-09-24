@@ -1,4 +1,4 @@
-import companyLogo from "../assets/logo.svg";
+import LogoIcon from "../ui/Logo";
 
 export function LoginPage() {
   const hasError =
@@ -9,7 +9,7 @@ export function LoginPage() {
       <section className="login-card" aria-labelledby="login-title">
         <h1 id="login-title">
           <div>
-            <img src={companyLogo} />
+            <LogoIcon theme="light" width="148" height="148" />
           </div>
         </h1>
         {hasError ? (

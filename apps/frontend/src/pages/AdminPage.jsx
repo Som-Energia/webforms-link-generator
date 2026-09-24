@@ -1,20 +1,30 @@
 import { useState } from "react";
 import { LinkGeneratorCard } from "../ui/LinkGeneratorCard";
 import { generateSocialTariffLink } from "../api/links";
-import companyLogo from "../assets/logo.svg";
+import { ThemeToggle } from "../theme/ThemeToggle";
+import LogoIcon from "../ui/Logo";
+import { resolveInitialTheme } from "../theme/theme";
 
 export function AdminPage() {
   const [formUrl, setFormUrl] = useState("");
+  const [theme, setTheme] = useState(resolveInitialTheme);
+
+  const handleChangeTheme = (theme) => {
+    setTheme(theme);
+  };
 
   return (
     <main className="admin-shell">
       <header className="admin-header">
         <div>
-          <img src={companyLogo} />
+          <LogoIcon theme={theme} />
         </div>
-        <form method="POST" action="/auth/logout">
-          <button className="secondary-button">Sortir</button>
-        </form>
+        <div className="admin-actions">
+          <ThemeToggle changeTheme={handleChangeTheme} />
+          <form method="POST" action="/auth/logout">
+            <button className="secondary-button">Sortir</button>
+          </form>
+        </div>
       </header>
       <div className="form-url-field">
         <label htmlFor="form-url">URL del formulari de destí (opcional)</label>
@@ -39,18 +49,6 @@ export function AdminPage() {
           }
           generateLink={() => generateSocialTariffLink(formUrl)}
           expiryMinutes={30}
-        />
-        <LinkGeneratorCard
-          title="Botó signaturit (Proximament)"
-          description={
-            <>
-              Genera un enllaç amb <code>enableSignaturitButton</code> activat.
-              Quan arriba al resum apareix un botó per llençar la signatura
-              digital de forma manual.
-            </>
-          }
-          generateLink={() => {}}
-          expiryMinutes={10080}
         />
       </section>
     </main>

@@ -1,5 +1,6 @@
 :root {
   /* Edit these semantic tokens to retheme the application without changing component styles. */
+  color-scheme: light;
   --page-background: #f0f3ec;
   --surface: #ffffff;
   --surface-muted: #f1f5f9;
@@ -46,6 +47,37 @@
   color: var(--text);
   font-family: var(--font-sans);
   background: var(--page-background);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page-background: #0f172a;
+  --surface: #1e293b;
+  --surface-muted: #334155;
+  --surface-light: #1e293b;
+  --text: #f8fafc;
+  --text-muted: #cbd5e1;
+  --text-on-light: #f8fafc;
+  --text-muted-on-light: #cbd5e1;
+  --text-on-primary: #ffffff;
+  --border: #334155;
+  --border-strong: #64748b;
+  --border-on-light: #475569;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --brand-accent: #a78bfa;
+  --secondary: #475569;
+  --secondary-hover: #64748b;
+  --success: #059669;
+  --success-hover: #047857;
+  --danger: #fca5a5;
+  --danger-surface: #450a0a;
+  --danger-surface-light: #450a0a;
+  --danger-text-light: #fecaca;
+  --danger-text: #fecaca;
+  --code-text: #7dd3fc;
+  --focus-ring: #38bdf8;
+  --shadow-color: rgb(2 6 23 / 0.45);
 }
 
 * {
@@ -186,6 +218,25 @@ input:focus-visible {
   height: 2.5rem;
 }
 
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.theme-toggle {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  color: var(--text);
+  background: var(--surface-muted);
+  font-weight: 700;
+}
+
+.theme-toggle:hover {
+  border-color: var(--primary);
+}
+
 .form-url-field {
   display: grid;
   gap: var(--space-2);
@@ -288,9 +339,16 @@ input:focus-visible {
     margin-bottom: var(--space-6);
   }
 
+  .admin-actions,
   .admin-header form,
-  .secondary-button {
+  .secondary-button,
+  .theme-toggle {
     width: 100%;
+  }
+
+  .admin-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .form-url-field {
