@@ -13,7 +13,7 @@ Single-container monorepo for an admin-only link generator.
 ### Prerequisites
 
 - Python 3.12 and Poetry.
-- Node.js 22 and npm.
+- Node.js 24 LTS and npm.
 - GNU Make, `setsid` (provided by util-linux on Linux), and standard POSIX utilities (`sh`, `mkfifo`, and `sed`) for the root Make workflow.
 - Access to the external JWT API configured below.
 
