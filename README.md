@@ -1,3 +1,5 @@
+[![CI](https://github.com/Som-Energia/webforms-link-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/Som-Energia/webforms-link-generator/actions/workflows/ci.yml)
+
 # Webforms Links Generator
 
 Single-container monorepo for an admin-only link generator.
@@ -29,13 +31,13 @@ cd apps/frontend && npm install
 
 Set these values in `.env` before starting the backend:
 
-| Variable | Required value |
-| --- | --- |
-| `ADMIN_PASSWORD` | Password for the admin login. |
-| `SESSION_SECRET` | Secret of at least 32 characters. |
-| `ADMIN_GATEWAY_SECRET` | Token sent to the JWT API as `X-Admin-Gateway-Token`. |
-| `JWT_API_URL` | Reachable external JWT API endpoint. |
-| `COOKIE_SECURE` | Set to `false` for local HTTP; leave `true` for HTTPS deployments. |
+| Variable               | Required value                                                     |
+| ---------------------- | ------------------------------------------------------------------ |
+| `ADMIN_PASSWORD`       | Password for the admin login.                                      |
+| `SESSION_SECRET`       | Secret of at least 32 characters.                                  |
+| `ADMIN_GATEWAY_SECRET` | Token sent to the JWT API as `X-Admin-Gateway-Token`.              |
+| `JWT_API_URL`          | Reachable external JWT API endpoint.                               |
+| `COOKIE_SECURE`        | Set to `false` for local HTTP; leave `true` for HTTPS deployments. |
 
 `PORT` defaults to `3000`; the Make backend target explicitly uses port `3000`. Before running the Make targets, export the values from `.env` in your shell; Flask does not load the root `.env` file automatically. Already-exported environment variables take precedence. Keep `.env` out of version control.
 
@@ -61,11 +63,11 @@ make dev
 
 ### Local URLs and Proxy
 
-| URL | Purpose |
-| --- | --- |
-| `http://localhost:5173` | Local React/Vite application. Use this URL during frontend development. |
-| `http://localhost:3000/health` | Flask health endpoint. |
-| `http://localhost:3000` | Flask server; it serves the UI only when `apps/frontend/dist` exists. |
+| URL                            | Purpose                                                                 |
+| ------------------------------ | ----------------------------------------------------------------------- |
+| `http://localhost:5173`        | Local React/Vite application. Use this URL during frontend development. |
+| `http://localhost:3000/health` | Flask health endpoint.                                                  |
+| `http://localhost:3000`        | Flask server; it serves the UI only when `apps/frontend/dist` exists.   |
 
 Vite proxies browser requests beginning with `/api` and `/auth` to `http://localhost:3000`, so both services must be running for login and link generation. `/health` is not proxied; request it directly from port `3000`.
 
