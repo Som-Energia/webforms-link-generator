@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { generateSocialTariffLink } from "../api/links";
 import { AdminPage } from "./AdminPage";
@@ -19,12 +19,14 @@ describe("AdminPage", () => {
 
     render(<AdminPage />);
 
-    expect(screen.getByText("L'enllaç generat caduca al cap de 7 dies.")).not.toBeNull();
+    const socialTariffCard = screen.getByRole("heading", { name: "Tarifa social" }).closest("article");
+    expect(socialTariffCard).not.toBeNull();
+    expect(within(socialTariffCard).getByText("L'enllaç generat caduca al cap de 30 minuts.")).not.toBeNull();
 
     fireEvent.change(screen.getByLabelText("URL del formulari de destí (opcional)"), {
       target: { value: formUrl },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Genera l'enllaç" }));
+    fireEvent.click(within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }));
 
     await waitFor(() => {
       expect(generateSocialTariffLink).toHaveBeenCalledWith(formUrl);

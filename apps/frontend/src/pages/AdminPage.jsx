@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { LinkGeneratorCard } from "../ui/LinkGeneratorCard";
 import { generateSocialTariffLink } from "../api/links";
+import companyLogo from "../assets/logo.svg";
 
 export function AdminPage() {
   const [formUrl, setFormUrl] = useState("");
@@ -9,15 +10,12 @@ export function AdminPage() {
     <main className="admin-shell">
       <header className="admin-header">
         <div>
-          <h1>Tauler d'administració</h1>
-          <p>Genera enllaços de contractació.</p>
+          <img src={companyLogo} />
         </div>
-
         <form method="POST" action="/auth/logout">
-          <button className="secondary-button">Tanca la sessió</button>
+          <button className="secondary-button">Sortir</button>
         </form>
       </header>
-
       <div className="form-url-field">
         <label htmlFor="form-url">URL del formulari de destí (opcional)</label>
         <input
