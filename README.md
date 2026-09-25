@@ -79,20 +79,36 @@ Vite proxies browser requests beginning with `/api` and `/auth` to `http://local
 - Link generation depends on the external JWT API. An unreachable API, a non-success response, or an invalid token response produces a `502`; confirm `JWT_API_URL` and `ADMIN_GATEWAY_SECRET`.
 - The backend request to the JWT API has a 10-second timeout.
 
-## Production Build
+## Production Image
+
+Build the image before deploying it with Portainer, then push it to the registry used by your infrastructure, such as Harbor.
 
 ```bash
-docker compose build
-docker compose up -d
+docker build -t harbor.example.com/project/webforms-links-generator:1.0.0 .
+docker push harbor.example.com/project/webforms-links-generator:1.0.0
 ```
+
+Replace `harbor.example.com/project/webforms-links-generator:1.0.0` with the Harbor project, repository, and tag agreed with the system administrator.
 
 The Flask app serves the React build from `apps/frontend/dist` and exposes the app on `PORT`.
 
 ## Portainer
 
-Use this repository as a Portainer stack with `docker-compose.yml`.
+Portainer should deploy a prebuilt image from Harbor. Do not rely on Portainer to build this repository directly in a remote environment.
+
+Use `docker-compose.portainer.yml` as the stack definition. Before deploying, replace the placeholder image with the real Harbor registry, project, repository, and tag:
+
+```yaml
+services:
+  webforms-links-generator:
+    image: harbor.example.com/project/webforms-links-generator:1.0.0
+```
+
+Keep `docker-compose.yml` for local builds from this repository.
 
 Set all required environment variables in Portainer before deploy. Keep `COOKIE_SECURE=true` when the app is served over HTTPS.
+
+Portainer may also need registry credentials configured so it can pull from Harbor.
 
 ## Verification
 
