@@ -150,8 +150,7 @@ def create_app() -> Flask:
         )
         return response
 
-    @app.post("/api/links/social-tariff")
-    def social_tariff_link() -> object:
+    def generate_link(feature_flag: str) -> object:
         if not is_authenticated():
             return jsonify({"message": "Unauthorized"}), 401
 
@@ -169,16 +168,26 @@ def create_app() -> Flask:
                     "Accept": "application/json",
                     "X-Admin-Gateway-Token": admin_gateway_secret,
                 },
-                json={"ff": ["socialTariffByPass"]},
+                json={"ff": [feature_flag]},
                 timeout=10,
             )
-        except requests.RequestException:
+        except requests.RequestException as error:
             app.logger.exception("Could not reach JWT API")
-            return jsonify({"message": "No s'ha pogut generar l'enllaç."}), 502
+            return jsonify(
+                {
+                    "message": "No s'ha pogut generar l'enllaç.",
+                    "detail": f"Error de connexió amb l'API JWT: {type(error).__name__}.",
+                }
+            ), 502
 
         if not response.ok:
             app.logger.warning("JWT API returned status %s", response.status_code)
-            return jsonify({"message": "L'API externa no pot generar el token."}), 502
+            return jsonify(
+                {
+                    "message": "L'API externa no pot generar el token.",
+                    "detail": f"L'API JWT ha retornat HTTP {response.status_code}.",
+                }
+            ), 502
 
         try:
             token = response.json()["data"]["token"]
@@ -192,6 +201,14 @@ def create_app() -> Flask:
             return jsonify({"link": _link_with_token(form_url, token)})
 
         return jsonify({"link": f"{DEFAULT_FORM_URL}?form_type=domestic&token={token}"})
+
+    @app.post("/api/links/social-tariff")
+    def social_tariff_link() -> object:
+        return generate_link("socialTariffByPass")
+
+    @app.post("/api/links/send-signature")
+    def send_signature_link() -> object:
+        return generate_link("sendSignature")
 
     @app.get("/")
     def root() -> object:

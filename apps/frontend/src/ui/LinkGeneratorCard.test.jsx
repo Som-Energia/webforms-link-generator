@@ -54,7 +54,10 @@ describe("LinkGeneratorCard", () => {
     expect(screen.getByText("L'enllaç caduca en 7 dies 00 h 00 min 00 s.")).not.toBeNull();
   });
 
-  it.each([new SyntaxError("Unexpected token '<'"), new TypeError("Failed to fetch")])(
+  it.each([
+    new Error("No s'ha pogut generar l'enllaç. Detalls tècnics: Resposta no JSON (HTTP 502)."),
+    new Error("No s'ha pogut generar l'enllaç. Detalls tècnics: Failed to fetch"),
+  ])(
     "clears loading after an API failure",
     async (failure) => {
       render(

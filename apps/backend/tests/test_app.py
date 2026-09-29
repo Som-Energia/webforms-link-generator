@@ -93,6 +93,52 @@ def test_social_tariff_generates_link(client, monkeypatch):
     assert calls[0][1]["headers"]["X-Admin-Gateway-Token"] == "gateway-secret"
 
 
+def test_social_tariff_reports_the_upstream_status_without_its_body(client, monkeypatch):
+    class FakeResponse:
+        ok = False
+        status_code = 503
+        text = "token=upstream-secret"
+
+    monkeypatch.setattr("app.main.requests.post", lambda *args, **kwargs: FakeResponse())
+    login(client)
+
+    response = client.post("/api/links/social-tariff")
+
+    assert response.status_code == 502
+    assert response.json == {
+        "message": "L'API externa no pot generar el token.",
+        "detail": "L'API JWT ha retornat HTTP 503.",
+    }
+
+
+def test_send_signature_generates_link(client, monkeypatch):
+    class FakeResponse:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"data": {"token": "jwt-token"}}
+
+    calls = []
+
+    def fake_post(*args, **kwargs):
+        calls.append((args, kwargs))
+        return FakeResponse()
+
+    monkeypatch.setattr("app.main.requests.post", fake_post)
+    login(client)
+
+    response = client.post("/api/links/send-signature")
+
+    assert response.status_code == 200
+    assert response.json == {
+        "link": "https://www.somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic&token=jwt-token"
+    }
+    assert calls[0][0] == ("https://jwt.example.test/token",)
+    assert calls[0][1]["json"] == {"ff": ["sendSignature"]}
+    assert calls[0][1]["headers"]["X-Admin-Gateway-Token"] == "gateway-secret"
+
+
 def test_social_tariff_uses_custom_form_url(client, monkeypatch):
     class FakeResponse:
         ok = True

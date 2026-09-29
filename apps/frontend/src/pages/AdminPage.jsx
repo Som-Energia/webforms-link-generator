@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { LinkGeneratorCard } from "../ui/LinkGeneratorCard";
-import { generateSocialTariffLink } from "../api/links";
+import {
+  generateSendSignatureLink,
+  generateSocialTariffLink,
+} from "../api/links";
 import { ThemeToggle } from "../theme/ThemeToggle";
 import LogoIcon from "../ui/Logo";
 import { resolveInitialTheme } from "../theme/theme";
@@ -48,6 +51,18 @@ export function AdminPage() {
             </>
           }
           generateLink={() => generateSocialTariffLink(formUrl)}
+          expiryMinutes={30}
+        />
+        <LinkGeneratorCard
+          title="Enviament de signatura"
+          description={
+            <>
+              Genera un enllaç amb <code>sendSignature</code> activat. Al resum
+              del formulari es mostra un botó per habilitar l'enviament de la
+              signatura per correu electrònic.
+            </>
+          }
+          generateLink={() => generateSendSignatureLink(formUrl)}
           expiryMinutes={30}
         />
       </section>
