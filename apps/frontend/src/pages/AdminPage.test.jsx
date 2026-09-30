@@ -1,6 +1,17 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { generateSendSignatureLink, generateSocialTariffLink } from "../api/links";
+import {
+  generateSendSignatureLink,
+  generateSocialTariffLink,
+} from "../api/links";
+import { version } from "../../package.json";
 import { AdminPage } from "./AdminPage";
 
 vi.mock("../api/links", () => ({
@@ -14,6 +25,12 @@ afterEach(() => {
 });
 
 describe("AdminPage", () => {
+  it("displays the frontend version", () => {
+    render(<AdminPage />);
+
+    expect(screen.getByText(`v${version}`).tagName).toBe("DATA");
+  });
+
   it("passes the populated custom form URL to the link generator", async () => {
     const formUrl =
       "https://www.somenergia.coop/es/formulario-contratacion-periodos?form_type=enterprise&uid=3300";
@@ -21,14 +38,25 @@ describe("AdminPage", () => {
 
     render(<AdminPage />);
 
-    const socialTariffCard = screen.getByRole("heading", { name: "Tarifa social" }).closest("article");
+    const socialTariffCard = screen
+      .getByRole("heading", { name: "Tarifa social" })
+      .closest("article");
     expect(socialTariffCard).not.toBeNull();
-    expect(within(socialTariffCard).getByText("L'enllaç generat caduca al cap de 30 minuts.")).not.toBeNull();
+    expect(
+      within(socialTariffCard).getByText(
+        "L'enllaç generat caduca al cap de 30 minuts.",
+      ),
+    ).not.toBeNull();
 
-    fireEvent.change(screen.getByLabelText("URL del formulari de destí (opcional)"), {
-      target: { value: formUrl },
-    });
-    fireEvent.click(within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }));
+    fireEvent.change(
+      screen.getByLabelText("URL del formulari de destí (opcional)"),
+      {
+        target: { value: formUrl },
+      },
+    );
+    fireEvent.click(
+      within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }),
+    );
 
     await waitFor(() => {
       expect(generateSocialTariffLink).toHaveBeenCalledWith(formUrl);
@@ -42,14 +70,23 @@ describe("AdminPage", () => {
 
     render(<AdminPage />);
 
-    const sendSignatureCard = screen.getByRole("heading", { name: "Enviament de signatura" }).closest("article");
+    const sendSignatureCard = screen
+      .getByRole("heading", { name: "Enviament de signatura" })
+      .closest("article");
     expect(sendSignatureCard).not.toBeNull();
     expect(within(sendSignatureCard).getByText(/sendSignature/)).not.toBeNull();
 
-    fireEvent.change(screen.getByLabelText("URL del formulari de destí (opcional)"), {
-      target: { value: formUrl },
-    });
-    fireEvent.click(within(sendSignatureCard).getByRole("button", { name: "Genera l'enllaç" }));
+    fireEvent.change(
+      screen.getByLabelText("URL del formulari de destí (opcional)"),
+      {
+        target: { value: formUrl },
+      },
+    );
+    fireEvent.click(
+      within(sendSignatureCard).getByRole("button", {
+        name: "Genera l'enllaç",
+      }),
+    );
 
     await waitFor(() => {
       expect(generateSendSignatureLink).toHaveBeenCalledWith(formUrl);
