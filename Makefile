@@ -13,7 +13,7 @@ version:
 	printf 'New shared version: '; IFS= read -r new_version; \
 	test -n "$$new_version" || { printf 'Version is required.\n' >&2; exit 1; }; \
 	if git show-ref --verify --quiet "refs/tags/v$$new_version"; then \
-		printf 'Tag v%s already exists.\n' "$$new_version" >&2; exit 1; \
+		printf 'Tag %s already exists.\n' "$$new_version" >&2; exit 1; \
 	else \
 		status=$$?; test "$$status" -eq 1 || { printf 'Unable to check existing Git tags.\n' >&2; exit 1; }; \
 	fi; \
@@ -21,7 +21,7 @@ version:
 	npm --prefix apps/frontend version "$$new_version" --no-git-tag-version && \
 	git add apps/backend/pyproject.toml apps/frontend/package.json apps/frontend/package-lock.json && \
 	git commit -m "chore: bump version to v$$new_version" -- apps/backend/pyproject.toml apps/frontend/package.json apps/frontend/package-lock.json && \
-	git tag "v$$new_version"
+	git tag "$$new_version"
 
 dev:
 	@set +e; \
