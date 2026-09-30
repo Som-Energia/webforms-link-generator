@@ -218,6 +218,12 @@ input:focus-visible {
   height: 2.5rem;
 }
 
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .admin-actions {
   display: flex;
   align-items: center;
@@ -261,6 +267,17 @@ input:focus-visible {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   gap: var(--space-6);
+}
+
+.admin-version {
+  border: 1px solid var(--brand-accent);
+  border-radius: 999px;
+  padding: 0.2rem var(--space-2);
+  color: var(--brand-accent);
+  background: var(--surface-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .generator-card {

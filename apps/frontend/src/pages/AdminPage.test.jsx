@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { generateSocialTariffLink } from "../api/links";
+import { version } from "../../package.json";
 import { AdminPage } from "./AdminPage";
 
 vi.mock("../api/links", () => ({
@@ -8,10 +9,17 @@ vi.mock("../api/links", () => ({
 }));
 
 afterEach(() => {
+  cleanup();
   vi.clearAllMocks();
 });
 
 describe("AdminPage", () => {
+  it("displays the frontend version", () => {
+    render(<AdminPage />);
+
+    expect(screen.getByText(`v${version}`).tagName).toBe("DATA");
+  });
+
   it("passes the populated custom form URL to the link generator", async () => {
     const formUrl =
       "https://www.somenergia.coop/es/formulario-contratacion-periodos?form_type=enterprise&uid=3300";

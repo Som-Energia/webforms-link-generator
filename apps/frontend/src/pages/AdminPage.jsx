@@ -4,6 +4,7 @@ import { generateSocialTariffLink } from "../api/links";
 import { ThemeToggle } from "../theme/ThemeToggle";
 import LogoIcon from "../ui/Logo";
 import { resolveInitialTheme } from "../theme/theme";
+import { version } from "../../package.json";
 
 export function AdminPage() {
   const [formUrl, setFormUrl] = useState("");
@@ -16,8 +17,11 @@ export function AdminPage() {
   return (
     <main className="admin-shell">
       <header className="admin-header">
-        <div>
+        <div className="admin-brand">
           <LogoIcon theme={theme} />
+          <data className="admin-version" value={version}>
+            v{version}
+          </data>
         </div>
         <div className="admin-actions">
           <ThemeToggle changeTheme={handleChangeTheme} />
