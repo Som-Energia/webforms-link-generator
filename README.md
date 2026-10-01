@@ -104,7 +104,7 @@ Confirm the displayed image reference with `y`, `Y`, `s`, or `S`, then enter the
 3. Checks that Git tag `<version>` does not already exist.
 4. Runs `poetry version <version>` in `apps/backend`.
 5. Runs `npm --prefix apps/frontend version <version> --no-git-tag-version`.
-6. Commits `apps/backend/pyproject.toml`, `apps/frontend/package.json`, and `apps/frontend/package-lock.json` with `chore: bump version to <version>`.
+6. Commits `apps/backend/pyproject.toml`, `apps/frontend/package.json`, and `apps/frontend/package-lock.json` with `🔖 bump to <version>`.
 7. Creates the local Git tag `<version>`.
 
 The target does not push the commit or tag. Push them separately after reviewing the generated commit:
