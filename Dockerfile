@@ -23,4 +23,4 @@ COPY --from=frontend-build /app/apps/frontend/dist ./apps/frontend/dist
 
 WORKDIR /app/apps/backend
 EXPOSE 3000
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-3000} --workers ${WEB_CONCURRENCY:-2} wsgi:app"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-3000} --workers ${WEB_CONCURRENCY:-2} --access-logfile - --error-logfile - --log-level info --access-logformat 'operation=http_request method=%(m)s status=%(s)s duration_ms=%(M)s' wsgi:app"]
