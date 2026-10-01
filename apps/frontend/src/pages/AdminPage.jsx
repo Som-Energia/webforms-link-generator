@@ -9,17 +9,36 @@ import LogoIcon from "../ui/Logo";
 import { resolveInitialTheme } from "../theme/theme";
 import { OwnerNameModal } from "../owner/OwnerNameModal";
 import { normalizeOwner, readOwnerName, saveOwnerName } from "../owner/owner";
+import { CopyButton } from "../ui/CopyButton";
 import { version } from "../../package.json";
+
+export const DEFAULT_FORM_URL =
+  "https://www.somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic";
+
+export function createPersonalLink(formUrl, owner) {
+  try {
+    const url = new URL(formUrl.trim() || DEFAULT_FORM_URL);
+    url.searchParams.set("owner", owner);
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
 
 export function AdminPage() {
   const [formUrl, setFormUrl] = useState("");
+  const [includesOwner, setIncludesOwner] = useState(true);
   const [theme, setTheme] = useState(resolveInitialTheme);
   const [ownerName, setOwnerName] = useState(readOwnerName);
-  const [isEditingOwner, setIsEditingOwner] = useState(() => !normalizeOwner(ownerName));
+  const [isEditingOwner, setIsEditingOwner] = useState(
+    () => !normalizeOwner(ownerName),
+  );
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuButtonRef = useRef(null);
   const editProfileButtonRef = useRef(null);
   const owner = normalizeOwner(ownerName);
+  const personalLink =
+    includesOwner && owner ? createPersonalLink(formUrl, owner) : "";
 
   useEffect(() => {
     if (isProfileMenuOpen) {
@@ -46,7 +65,9 @@ export function AdminPage() {
 
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      const menuItems = [...event.currentTarget.querySelectorAll('[role="menuitem"]')];
+      const menuItems = [
+        ...event.currentTarget.querySelectorAll('[role="menuitem"]'),
+      ];
       const currentIndex = menuItems.indexOf(document.activeElement);
       const nextIndex =
         event.key === "ArrowDown"
@@ -68,7 +89,11 @@ export function AdminPage() {
         <div className="admin-actions">
           <ThemeToggle changeTheme={handleChangeTheme} />
           <div className="profile-control">
-            <svg className="profile-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <svg
+              className="profile-icon"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
               <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z" />
             </svg>
             <span className="profile-name">{ownerName}</span>
@@ -85,7 +110,12 @@ export function AdminPage() {
               <span aria-hidden="true">...</span>
             </button>
             {isProfileMenuOpen ? (
-              <div id="profile-menu" className="profile-menu" role="menu" onKeyDown={handleProfileMenuKeyDown}>
+              <div
+                id="profile-menu"
+                className="profile-menu"
+                role="menu"
+                onKeyDown={handleProfileMenuKeyDown}
+              >
                 <button
                   ref={editProfileButtonRef}
                   type="button"
@@ -98,7 +128,9 @@ export function AdminPage() {
                   Editar
                 </button>
                 <form method="POST" action="/auth/logout" role="none">
-                  <button type="submit" role="menuitem">Sortir</button>
+                  <button type="submit" role="menuitem">
+                    Sortir
+                  </button>
                 </form>
               </div>
             ) : null}
@@ -107,13 +139,41 @@ export function AdminPage() {
       </header>
       <div className="form-url-field">
         <label htmlFor="form-url">URL del formulari de destí (opcional)</label>
-        <input
-          id="form-url"
-          type="url"
-          value={formUrl}
-          onChange={(event) => setFormUrl(event.target.value)}
-          placeholder="https://somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic"
-        />
+        <div className="form-url-input-row">
+          <input
+            id="form-url"
+            type="url"
+            value={formUrl}
+            onChange={(event) => setFormUrl(event.target.value)}
+            placeholder="https://somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic"
+          />
+          <label className="owner-toggle">
+            <input
+              type="checkbox"
+              checked={includesOwner}
+              onChange={(event) => setIncludesOwner(event.target.checked)}
+            />
+            Afegir el meu usuari
+          </label>
+        </div>
+        <div className="personal-link-section">
+          {personalLink ? (
+            <div className="link-controls">
+              <a
+                className="url-link"
+                href={personalLink}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {personalLink}
+              </a>
+              <CopyButton
+                label="Copia l'enllaç personal"
+                value={personalLink}
+              />
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <section className="cards-grid" aria-label="Generadors d'enllaços">
@@ -126,7 +186,10 @@ export function AdminPage() {
               amb tarifa social.
             </>
           }
-          generateLink={() => generateSocialTariffLink(owner, formUrl)}
+          generateLink={() =>
+            generateSocialTariffLink(includesOwner ? owner : undefined, formUrl)
+          }
+          owner={includesOwner ? owner : undefined}
           expiryMinutes={30}
         />
         <LinkGeneratorCard
@@ -138,11 +201,19 @@ export function AdminPage() {
               signatura per correu electrònic.
             </>
           }
-          generateLink={() => generateSendSignatureLink(owner, formUrl)}
+          generateLink={() =>
+            generateSendSignatureLink(
+              includesOwner ? owner : undefined,
+              formUrl,
+            )
+          }
+          owner={includesOwner ? owner : undefined}
           expiryMinutes={30}
         />
       </section>
-      {isEditingOwner ? <OwnerNameModal initialName={ownerName} onSave={handleSaveOwnerName} /> : null}
+      {isEditingOwner ? (
+        <OwnerNameModal initialName={ownerName} onSave={handleSaveOwnerName} />
+      ) : null}
     </main>
   );
 }

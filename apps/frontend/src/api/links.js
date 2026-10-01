@@ -30,7 +30,7 @@ async function generateFeatureFlagLink(path, owner, formUrl = "") {
     response = await fetch(path, {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ owner, ...(customFormUrl ? { formUrl: customFormUrl } : {}) }),
+      body: JSON.stringify({ ...(owner ? { owner } : {}), ...(customFormUrl ? { formUrl: customFormUrl } : {}) }),
     });
   } catch (error) {
     throw errorWithDetails(

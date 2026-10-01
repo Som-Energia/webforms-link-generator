@@ -72,6 +72,23 @@ describe("generateSocialTariffLink", () => {
     });
   });
 
+  it("omits owner from the API request when it is disabled", async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ link: "https://forms.example.test/alta?token=jwt-token" }),
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(generateSocialTariffLink(undefined)).resolves.toBe(
+      "https://forms.example.test/alta?token=jwt-token",
+    );
+    expect(fetch).toHaveBeenCalledWith("/api/links/social-tariff", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+  });
+
   it("rejects an invalid custom form URL without making a request", async () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
