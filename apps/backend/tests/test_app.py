@@ -222,7 +222,7 @@ def test_social_tariff_replaces_existing_tokens_in_custom_form_url(client, monke
     }
 
 
-@pytest.mark.parametrize("form_url", ["not-a-url", "ftp://forms.example.test/alta", "https://"])
+@pytest.mark.parametrize("form_url", ["not-a-url", "ftp://forms.example.test/alta", "http://forms.example.test/alta", "https://"])
 def test_social_tariff_rejects_invalid_custom_form_url_without_requesting_jwt(client, monkeypatch, form_url):
     monkeypatch.setattr("app.main.requests.post", pytest.fail)
     login(client)
@@ -230,7 +230,7 @@ def test_social_tariff_rejects_invalid_custom_form_url_without_requesting_jwt(cl
     response = client.post("/api/links/social-tariff", json={"formUrl": form_url, "owner": OWNER})
 
     assert response.status_code == 400
-    assert response.json == {"message": "L'URL del formulari ha de ser una URL HTTP o HTTPS vàlida."}
+    assert response.json == {"message": "L'URL del formulari ha de ser una URL HTTPS vàlida."}
 
 
 @pytest.mark.parametrize("owner", [None, "", "Ada Lovelace", "ada--lovelace", "ada-lovelace-"])
@@ -245,13 +245,22 @@ def test_social_tariff_requires_a_valid_owner(client, monkeypatch, owner):
 
 
 def test_social_tariff_requires_owner(client, monkeypatch):
-    monkeypatch.setattr("app.main.requests.post", pytest.fail)
+    class FakeResponse:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"data": {"token": "jwt-token"}}
+
+    monkeypatch.setattr("app.main.requests.post", lambda *args, **kwargs: FakeResponse())
     login(client)
 
     response = client.post("/api/links/social-tariff", json={})
 
-    assert response.status_code == 400
-    assert response.json == {"message": "A valid owner is required."}
+    assert response.status_code == 200
+    assert response.json == {
+        "link": "https://www.somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic&token=jwt-token"
+    }
 
 
 def test_social_tariff_replaces_existing_owner_in_custom_form_url(client, monkeypatch):
@@ -272,3 +281,23 @@ def test_social_tariff_replaces_existing_owner_in_custom_form_url(client, monkey
 
     assert response.status_code == 200
     assert response.json == {"link": "https://forms.example.test/alta?plan=solar&owner=ada-lovelace&tag=vip&token=jwt-token"}
+
+
+def test_social_tariff_removes_existing_owner_when_owner_is_not_supplied(client, monkeypatch):
+    class FakeResponse:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"data": {"token": "jwt-token"}}
+
+    monkeypatch.setattr("app.main.requests.post", lambda *args, **kwargs: FakeResponse())
+    login(client)
+
+    response = client.post(
+        "/api/links/social-tariff",
+        json={"formUrl": "https://forms.example.test/alta?plan=solar&owner=old&tag=vip&owner=older"},
+    )
+
+    assert response.status_code == 200
+    assert response.json == {"link": "https://forms.example.test/alta?plan=solar&tag=vip&token=jwt-token"}

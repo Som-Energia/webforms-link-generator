@@ -34,21 +34,25 @@ def _custom_form_url(value: object) -> str | None:
     except ValueError as error:
         raise ValueError from error
 
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+    if parsed.scheme != "https" or not parsed.hostname:
         raise ValueError
 
     return value
 
 
-def _link_with_token(form_url: str, token: str, owner: str) -> str:
+def _link_with_token(form_url: str, token: str, owner: str | None) -> str:
     parsed = urlsplit(form_url)
     query_parts = parsed.query.split("&") if parsed.query else []
     updated_query = []
-    replacements = {"token": quote(token, safe=""), "owner": quote(owner, safe="")}
+    replacements = {"token": quote(token, safe="")}
+    if owner is not None:
+        replacements["owner"] = quote(owner, safe="")
     added = set()
 
     for part in query_parts:
         parameter_name = unquote_plus(part.partition("=")[0])
+        if parameter_name == "owner" and owner is None:
+            continue
         if parameter_name not in replacements:
             updated_query.append(part)
         elif parameter_name not in added:
@@ -159,13 +163,13 @@ def create_app() -> Flask:
 
         payload = request.get_json(silent=True) or {}
         owner = payload.get("owner")
-        if not isinstance(owner, str) or not OWNER_PATTERN.fullmatch(owner):
+        if "owner" in payload and (not isinstance(owner, str) or not OWNER_PATTERN.fullmatch(owner)):
             return jsonify({"message": "A valid owner is required."}), 400
 
         try:
             form_url = _custom_form_url(payload.get("formUrl"))
         except (AttributeError, ValueError):
-            return jsonify({"message": "L'URL del formulari ha de ser una URL HTTP o HTTPS vàlida."}), 400
+            return jsonify({"message": "L'URL del formulari ha de ser una URL HTTPS vàlida."}), 400
 
         try:
             response = requests.post(
