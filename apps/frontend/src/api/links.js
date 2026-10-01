@@ -22,17 +22,15 @@ function safeDiagnostic(details) {
     .slice(0, 500);
 }
 
-async function generateFeatureFlagLink(path, formUrl = "") {
+async function generateFeatureFlagLink(path, owner, formUrl = "") {
   const customFormUrl = validateFormUrl(formUrl);
   let response;
 
   try {
     response = await fetch(path, {
       method: "POST",
-      headers: customFormUrl
-        ? { Accept: "application/json", "Content-Type": "application/json" }
-        : { Accept: "application/json" },
-      body: customFormUrl ? JSON.stringify({ formUrl: customFormUrl }) : undefined,
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ owner, ...(customFormUrl ? { formUrl: customFormUrl } : {}) }),
     });
   } catch (error) {
     throw errorWithDetails(
@@ -67,10 +65,10 @@ async function generateFeatureFlagLink(path, formUrl = "") {
   return data.link;
 }
 
-export async function generateSocialTariffLink(formUrl = "") {
-  return generateFeatureFlagLink("/api/links/social-tariff", formUrl);
+export async function generateSocialTariffLink(owner, formUrl = "") {
+  return generateFeatureFlagLink("/api/links/social-tariff", owner, formUrl);
 }
 
-export async function generateSendSignatureLink(formUrl = "") {
-  return generateFeatureFlagLink("/api/links/send-signature", formUrl);
+export async function generateSendSignatureLink(owner, formUrl = "") {
+  return generateFeatureFlagLink("/api/links/send-signature", owner, formUrl);
 }

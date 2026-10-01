@@ -243,6 +243,81 @@ input:focus-visible {
   border-color: var(--primary);
 }
 
+.profile-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.25rem 0.35rem 0.25rem var(--space-2);
+  color: var(--text);
+  background: var(--surface-muted);
+}
+
+.profile-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: currentcolor;
+  flex: 0 0 auto;
+}
+
+.profile-name {
+  overflow: hidden;
+  max-width: 12rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.profile-menu-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.3rem 0.55rem;
+  color: inherit;
+  background: transparent;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.profile-menu-button:hover,
+.profile-menu-button[aria-expanded="true"] {
+  background: var(--surface);
+}
+
+.profile-menu {
+  position: absolute;
+  z-index: 1;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  display: grid;
+  min-width: 8rem;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.profile-menu form {
+  margin: 0;
+}
+
+.profile-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+}
+
+.profile-menu button:hover {
+  background: var(--surface-muted);
+}
+
 .form-url-field {
   display: grid;
   gap: var(--space-2);
@@ -318,6 +393,52 @@ input:focus-visible {
   margin-top: var(--space-5);
 }
 
+.modal-backdrop {
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(15 23 42 / 0.65);
+}
+
+.owner-name-modal {
+  width: min(100%, 28rem);
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.owner-name-modal h1,
+.owner-name-modal p {
+  margin-top: 0;
+}
+
+.owner-name-modal p {
+  color: var(--text-muted);
+}
+
+.owner-name-modal form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.owner-name-modal input {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 0.7rem 0.8rem;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.owner-name-modal .error-box {
+  margin: 0;
+}
+
 .result-box {
   display: grid;
   gap: var(--space-3);
@@ -359,13 +480,19 @@ input:focus-visible {
   .admin-actions,
   .admin-header form,
   .secondary-button,
-  .theme-toggle {
+  .theme-toggle,
+  .profile-control {
     width: 100%;
   }
 
   .admin-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .profile-name {
+    max-width: none;
+    flex: 1;
   }
 
   .form-url-field {

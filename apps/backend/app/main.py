@@ -1,4 +1,5 @@
 import os
+import re
 import secrets
 from pathlib import Path
 from urllib.parse import quote, unquote_plus, urlsplit, urlunsplit
@@ -12,6 +13,7 @@ from dotenv import load_dotenv
 COOKIE_NAME = "admin_session"
 SESSION_MAX_AGE = 60 * 60 * 8
 DEFAULT_FORM_URL = "https://www.somenergia.coop/ca/formulari-contractacio-periodes"
+OWNER_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 def _custom_form_url(value: object) -> str | None:
@@ -38,23 +40,24 @@ def _custom_form_url(value: object) -> str | None:
     return value
 
 
-def _link_with_token(form_url: str, token: str) -> str:
+def _link_with_token(form_url: str, token: str, owner: str) -> str:
     parsed = urlsplit(form_url)
-    encoded_token = quote(token, safe="")
     query_parts = parsed.query.split("&") if parsed.query else []
     updated_query = []
-    token_added = False
+    replacements = {"token": quote(token, safe=""), "owner": quote(owner, safe="")}
+    added = set()
 
     for part in query_parts:
         parameter_name = unquote_plus(part.partition("=")[0])
-        if parameter_name != "token":
+        if parameter_name not in replacements:
             updated_query.append(part)
-        elif not token_added:
-            updated_query.append(f"token={encoded_token}")
-            token_added = True
+        elif parameter_name not in added:
+            updated_query.append(f"{parameter_name}={replacements[parameter_name]}")
+            added.add(parameter_name)
 
-    if not token_added:
-        updated_query.append(f"token={encoded_token}")
+    for parameter_name, value in replacements.items():
+        if parameter_name not in added:
+            updated_query.append(f"{parameter_name}={value}")
 
     return urlunsplit(parsed._replace(query="&".join(updated_query)))
 
@@ -155,6 +158,10 @@ def create_app() -> Flask:
             return jsonify({"message": "Unauthorized"}), 401
 
         payload = request.get_json(silent=True) or {}
+        owner = payload.get("owner")
+        if not isinstance(owner, str) or not OWNER_PATTERN.fullmatch(owner):
+            return jsonify({"message": "A valid owner is required."}), 400
+
         try:
             form_url = _custom_form_url(payload.get("formUrl"))
         except (AttributeError, ValueError):
@@ -198,9 +205,9 @@ def create_app() -> Flask:
             return jsonify({"message": "L'API externa no ha retornat un JWT vàlid."}), 502
 
         if form_url:
-            return jsonify({"link": _link_with_token(form_url, token)})
+            return jsonify({"link": _link_with_token(form_url, token, owner)})
 
-        return jsonify({"link": f"{DEFAULT_FORM_URL}?form_type=domestic&token={token}"})
+        return jsonify({"link": _link_with_token(f"{DEFAULT_FORM_URL}?form_type=domestic", token, owner)})
 
     @app.post("/api/links/social-tariff")
     def social_tariff_link() -> object:
