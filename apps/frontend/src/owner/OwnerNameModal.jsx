@@ -10,7 +10,7 @@ export function OwnerNameModal({ initialName, onSave }) {
     const displayName = name.trim();
 
     if (!normalizeOwner(displayName)) {
-      setError("Introdueix un nom complet que contingui com a mínim una lletra o un número.");
+      setError("Usuari ERP es obligatori.");
       return;
     }
 
@@ -26,9 +26,12 @@ export function OwnerNameModal({ initialName, onSave }) {
         aria-labelledby="owner-name-title"
       >
         <h1 id="owner-name-title">Identifica el teu enllaç</h1>
-        <p>La forma normalitzada del teu nom complet identificarà cada enllaç generat.</p>
+        <p>
+          El teu usuari d'ERP identificarà cada enllaç generat i es guardarà a
+          la fitxa del lead per identificar contractes que venen d'ET.
+        </p>
         <form onSubmit={handleSubmit}>
-          <label htmlFor="owner-name">Introdueix el teu nom complet</label>
+          <label htmlFor="owner-name">Usuari ERP</label>
           <input
             id="owner-name"
             value={name}
@@ -44,7 +47,7 @@ export function OwnerNameModal({ initialName, onSave }) {
             </p>
           ) : null}
           <button type="submit" className="primary-button">
-            Desa el nom
+            Desa el nom d'usuari
           </button>
         </form>
       </section>
