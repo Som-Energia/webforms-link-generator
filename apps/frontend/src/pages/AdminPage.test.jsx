@@ -143,10 +143,10 @@ describe("AdminPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Obre el menú de perfil" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Editar" }));
-    fireEvent.change(screen.getByLabelText("Introdueix el teu nom complet"), {
+    fireEvent.change(screen.getByLabelText("Usuari ERP"), {
       target: { value: "Grace Hopper" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Desa el nom" }));
+    fireEvent.click(screen.getByRole("button", { name: "Desa el nom d'usuari" }));
 
     expect(screen.getByRole("link", { name: `${DEFAULT_FORM_URL}&owner=grace-hopper` })).not.toBeNull();
   });
@@ -269,11 +269,15 @@ describe("AdminPage", () => {
     render(<AdminPage />);
 
     expect(screen.getByRole("dialog", { name: "Identifica el teu enllaç" })).not.toBeNull();
-    expect(screen.getByText("La forma normalitzada del teu nom complet identificarà cada enllaç generat.")).not.toBeNull();
-    fireEvent.change(screen.getByLabelText("Introdueix el teu nom complet"), {
+    expect(
+      screen.getByText(
+        "El teu usuari d'ERP identificarà cada enllaç generat i es guardarà a la fitxa del lead per identificar contractes que venen d'ET.",
+      ),
+    ).not.toBeNull();
+    fireEvent.change(screen.getByLabelText("Usuari ERP"), {
       target: { value: "Joan Àlex--Smith" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Desa el nom" }));
+    fireEvent.click(screen.getByRole("button", { name: "Desa el nom d'usuari" }));
 
     expect(window.localStorage.getItem(OWNER_NAME_STORAGE_KEY)).toBe("Joan Àlex--Smith");
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -288,13 +292,11 @@ describe("AdminPage", () => {
     fireEvent.click(profileMenuButton);
     expect(profileMenuButton.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(screen.getByRole("menuitem", { name: "Editar" }));
-    fireEvent.change(screen.getByLabelText("Introdueix el teu nom complet"), {
+    fireEvent.change(screen.getByLabelText("Usuari ERP"), {
       target: { value: "---" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Desa el nom" }));
-    expect(screen.getByRole("alert").textContent).toBe(
-      "Introdueix un nom complet que contingui com a mínim una lletra o un número.",
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Desa el nom d'usuari" }));
+    expect(screen.getByRole("alert").textContent).toBe("Usuari ERP es obligatori.");
     expect(window.localStorage.getItem(OWNER_NAME_STORAGE_KEY)).toBe("Ada Lovelace");
   });
 

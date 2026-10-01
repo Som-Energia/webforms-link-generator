@@ -3,12 +3,12 @@ function validateFormUrl(formUrl) {
 
   try {
     const url = new URL(formUrl);
-    if (url.protocol === "http:" || url.protocol === "https:") return formUrl.trim();
+    if (url.protocol === "https:") return formUrl.trim();
   } catch {
     // The API also validates this value before requesting a JWT.
   }
 
-  throw new Error("L'URL del formulari ha de ser una URL HTTP o HTTPS vàlida.");
+  throw new Error("L'URL del formulari ha de ser una URL HTTPS vàlida.");
 }
 
 function errorWithDetails(message, details) {

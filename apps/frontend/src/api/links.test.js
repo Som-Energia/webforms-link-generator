@@ -89,12 +89,15 @@ describe("generateSocialTariffLink", () => {
     });
   });
 
-  it("rejects an invalid custom form URL without making a request", async () => {
+  it.each([
+    ["an HTTP custom form URL", "http://forms.example.test/alta"],
+    ["a non-HTTP custom form URL", "ftp://forms.example.test/alta"],
+  ])("rejects %s without making a request", async (_scenario, formUrl) => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
 
-    await expect(generateSocialTariffLink("ada-lovelace", "ftp://forms.example.test/alta")).rejects.toThrow(
-      "L'URL del formulari ha de ser una URL HTTP o HTTPS vàlida.",
+    await expect(generateSocialTariffLink("ada-lovelace", formUrl)).rejects.toThrow(
+      "L'URL del formulari ha de ser una URL HTTPS vàlida.",
     );
     expect(fetch).not.toHaveBeenCalled();
   });
