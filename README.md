@@ -93,7 +93,7 @@ make version
 ./scripts/publish-images.sh 0.1.4
 ```
 
-Confirm the displayed image reference with `y`, `Y`, `s`, or `S`, then enter the Harbor username and token when prompted. On success, the script prints the pushed image digest.
+Confirm the displayed image reference with `y`, `Y`, `s`, or `S`, then enter the Harbor username and token when prompted. On success, the script prints the pushed image digest and updates the configured Portainer stack to use that exact image tag.
 
 ### Shared Version
 
@@ -104,7 +104,7 @@ Confirm the displayed image reference with `y`, `Y`, `s`, or `S`, then enter the
 3. Checks that Git tag `<version>` does not already exist.
 4. Runs `poetry version <version>` in `apps/backend`.
 5. Runs `npm --prefix apps/frontend version <version> --no-git-tag-version`.
-6. Commits `apps/backend/pyproject.toml`, `apps/frontend/package.json`, and `apps/frontend/package-lock.json` with `chore: bump version to <version>`.
+6. Commits `apps/backend/pyproject.toml`, `apps/frontend/package.json`, and `apps/frontend/package-lock.json` with `🔖 bump to <version>`.
 7. Creates the local Git tag `<version>`.
 
 The target does not push the commit or tag. Push them separately after reviewing the generated commit:
@@ -134,11 +134,11 @@ Without an argument, the script suggests `git describe --tags --always` as the i
 
 After confirmation, the script:
 
-1. Clones the repository into `scripts/webforms-link-generator`, or reuses that directory when it is a valid Git work tree.
-2. Logs in to `harbor.somenergia.coop` with the prompted username and token.
-3. Builds with `docker build --pull -t "$IMAGE_URL:$TAG" scripts/webforms-link-generator`.
-4. Pushes with `docker push "$IMAGE_URL:$TAG"`.
-5. Prints the first repository digest reported by `docker inspect`.
+1. Logs in to `harbor.somenergia.coop` with the prompted username and token.
+2. Builds the current repository checkout with `docker build --pull -t "$IMAGE_URL:$TAG" .`.
+3. Pushes with `docker push "$IMAGE_URL:$TAG"`.
+4. Prints the first repository digest reported by `docker inspect`.
+5. Updates `IMAGE_TAG` in the configured Portainer stack and redeploys it after forcing an image pull.
 
 The Flask app serves the React build from `apps/frontend/dist` and exposes the app on `PORT`.
 
@@ -146,13 +146,22 @@ The Flask app serves the React build from `apps/frontend/dist` and exposes the a
 
 Portainer should deploy a prebuilt image from Harbor. Do not rely on Portainer to build this repository directly in a remote environment.
 
-Use `docker-compose.portainer.yml` as the stack definition. Before deploying, replace the placeholder image with the real Harbor registry, project, repository, and tag:
+Use `docker-compose.portainer.yml` as the stack definition. The file stays unchanged between deployments; Portainer substitutes `IMAGE_URL` and `IMAGE_TAG` from the stack environment variables:
 
 ```yaml
 services:
   webforms-links-generator:
-    image: harbor.example.com/project/webforms-links-generator:1.0.0
+    image: ${IMAGE_URL:?set IMAGE_URL}:${IMAGE_TAG:?set IMAGE_TAG}
 ```
+
+Before the first deployment, set these stack environment variables in Portainer:
+
+```dotenv
+IMAGE_URL=harbor.somenergia.coop/webapps/webforms-link-generator
+IMAGE_TAG=0.1.4
+```
+
+Set `PORTAINER_URL`, `PORTAINER_API_TOKEN`, and `PORTAINER_STACK_NAME` in the local `.env` used by `scripts/publish-images.sh`. The redeploy script requires `curl` and `jq`. Each publication then changes only `IMAGE_TAG` and forces Portainer to pull and redeploy the exact version just pushed. To roll back, redeploy the stack after setting `IMAGE_TAG` to a previously published tag.
 
 Keep `docker-compose.yml` for local builds from this repository.
 

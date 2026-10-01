@@ -22,5 +22,5 @@ fi
 (cd apps/backend && poetry version "$new_version") && \
   npm --prefix apps/frontend version "$new_version" --no-git-tag-version && \
   git add apps/backend/pyproject.toml apps/frontend/package.json apps/frontend/package-lock.json && \
-  git commit -m "chore: bump version to v$new_version" -- apps/backend/pyproject.toml apps/frontend/package.json apps/frontend/package-lock.json && \
+  git commit -m "🔖 bump to $new_version" -- apps/backend/pyproject.toml apps/frontend/package.json apps/frontend/package-lock.json && \
   git tag "$new_version"
