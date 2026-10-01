@@ -1,6 +1,6 @@
 services:
   webforms-links-generator:
-    image: harbor.example.com/project/webforms-links-generator:1.0.0
+    image: ${IMAGE_URL:?set IMAGE_URL}:${IMAGE_TAG:?set IMAGE_TAG}
     ports:
       - "3000:3000"
     environment:
