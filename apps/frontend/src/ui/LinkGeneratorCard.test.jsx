@@ -47,14 +47,62 @@ describe("LinkGeneratorCard", () => {
 
     resolveLink("https://example.test/generated-link");
 
+    const generatedUrl = "https://example.test/generated-link";
     await waitFor(() => {
-      expect(screen.getByDisplayValue("https://example.test/generated-link")).not.toBeNull();
+      expect(screen.getByRole("link", { name: generatedUrl })).not.toBeNull();
     });
+    const generatedLink = screen.getByRole("link", { name: generatedUrl });
+    expect(generatedLink.getAttribute("href")).toBe(generatedUrl);
+    expect(generatedLink.getAttribute("target")).toBe("_blank");
+    expect(generatedLink.getAttribute("rel")).toBe("noopener noreferrer");
     expect(screen.getByRole("button", { name: "Genera l'enllaç" }).disabled).toBe(false);
     expect(screen.getByText("L'enllaç caduca en 7 dies 00 h 00 min 00 s.")).not.toBeNull();
   });
 
-  it.each([new SyntaxError("Unexpected token '<'"), new TypeError("Failed to fetch")])(
+  it("copies the generated link with the icon-only copy button", async () => {
+    const generatedUrl = "https://example.test/generated-link";
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(
+      <LinkGeneratorCard
+        title="Tarifa social"
+        description="Genera un enllaç."
+        generateLink={vi.fn().mockResolvedValue(generatedUrl)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Genera l'enllaç" }));
+    await screen.findByRole("link", { name: generatedUrl });
+    fireEvent.click(screen.getByRole("button", { name: "Copia l'enllaç" }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(generatedUrl);
+    });
+    expect(screen.getByRole("status").textContent).toBe("Copiat");
+  });
+
+  it("renders an unsafe API response URL as text rather than an actionable link", async () => {
+    const generatedUrl = "javascript:alert('unsafe')";
+
+    render(
+      <LinkGeneratorCard
+        title="Tarifa social"
+        description="Genera un enllaç."
+        generateLink={vi.fn().mockResolvedValue(generatedUrl)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Genera l'enllaç" }));
+
+    expect(await screen.findByText(generatedUrl)).not.toBeNull();
+    expect(screen.queryByRole("link", { name: generatedUrl })).toBeNull();
+  });
+
+  it.each([
+    new Error("No s'ha pogut generar l'enllaç. Detalls tècnics: Resposta no JSON (HTTP 502)."),
+    new Error("No s'ha pogut generar l'enllaç. Detalls tècnics: Failed to fetch"),
+  ])(
     "clears loading after an API failure",
     async (failure) => {
       render(

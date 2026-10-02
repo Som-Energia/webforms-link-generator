@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { CopyButton } from "./CopyButton";
 
 export function formatExpiryDuration(expiryMinutes) {
   const days = Math.floor(expiryMinutes / 1440);
@@ -30,22 +31,45 @@ export function formatCountdown(remainingSeconds) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-export function LinkGeneratorCard({ title, description, generateLink, expiryMinutes }) {
+function isSafeLink(url) {
+  try {
+    const { protocol } = new URL(url);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export function updateLinkOwner(link, owner) {
+  try {
+    const url = new URL(link);
+    if (!isSafeLink(link)) return link;
+
+    if (owner) {
+      url.searchParams.set("owner", owner);
+    } else {
+      url.searchParams.delete("owner");
+    }
+
+    return url.toString();
+  } catch {
+    return link;
+  }
+}
+
+export function LinkGeneratorCard({ title, description, generateLink, owner, expiryMinutes }) {
   const [isLoading, setIsLoading] = useState(false);
   const [link, setLink] = useState(null);
   const [error, setError] = useState(null);
-  const [copied, setCopied] = useState(false);
   const [expiresAt, setExpiresAt] = useState(null);
   const [remainingSeconds, setRemainingSeconds] = useState(null);
   const isMounted = useRef(true);
-  const copyResetTimeout = useRef(null);
 
   useEffect(() => {
     isMounted.current = true;
 
     return () => {
       isMounted.current = false;
-      window.clearTimeout(copyResetTimeout.current);
     };
   }, []);
 
@@ -67,11 +91,14 @@ export function LinkGeneratorCard({ title, description, generateLink, expiryMinu
     return () => window.clearInterval(intervalId);
   }, [expiresAt]);
 
+  useEffect(() => {
+    setLink((currentLink) => (currentLink ? updateLinkOwner(currentLink, owner) : currentLink));
+  }, [owner]);
+
   async function handleGenerate() {
     setIsLoading(true);
     setLink(null);
     setError(null);
-    setCopied(false);
     setExpiresAt(null);
     setRemainingSeconds(null);
 
@@ -94,21 +121,9 @@ export function LinkGeneratorCard({ title, description, generateLink, expiryMinu
     }
   }
 
-  async function handleCopy() {
-    if (!link || remainingSeconds === 0) return;
-
-    await navigator.clipboard.writeText(link);
-    if (!isMounted.current) return;
-
-    setCopied(true);
-    window.clearTimeout(copyResetTimeout.current);
-    copyResetTimeout.current = window.setTimeout(() => {
-      if (isMounted.current) setCopied(false);
-    }, 2000);
-  }
-
   const isExpired = remainingSeconds === 0;
   const countdown = remainingSeconds === null ? null : formatCountdown(remainingSeconds);
+  const canOpenLink = link !== null && isSafeLink(link);
 
   return (
     <article className="generator-card">
@@ -135,10 +150,20 @@ export function LinkGeneratorCard({ title, description, generateLink, expiryMinu
 
       {link ? (
         <div className="result-box">
-          <input value={link} readOnly aria-label="Enllaç generat" />
-          <button type="button" className="copy-button" onClick={handleCopy} disabled={isExpired}>
-            {copied ? "Copiat!" : "Copia l'enllaç"}
-          </button>
+          <div className="link-controls">
+            {canOpenLink ? (
+              <a className="url-link" href={link} target="_blank" rel="noopener noreferrer">
+                {link}
+              </a>
+            ) : (
+              <span className="url-link">{link}</span>
+            )}
+            <CopyButton
+              label="Copia l'enllaç"
+              value={link}
+              disabled={isExpired}
+            />
+          </div>
         </div>
       ) : null}
     </article>

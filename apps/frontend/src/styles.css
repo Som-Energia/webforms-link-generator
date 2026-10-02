@@ -105,7 +105,8 @@ button:disabled {
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+a:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
@@ -150,8 +151,7 @@ input:focus-visible {
 }
 
 .login-form input,
-.result-box input,
-.form-url-field input {
+.form-url-input-row > input {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -166,8 +166,7 @@ input:focus-visible {
 
 .login-form button,
 .primary-button,
-.secondary-button,
-.copy-button {
+.secondary-button {
   border: 0;
   border-radius: var(--radius-md);
   padding: 0.5rem var(--space-4);
@@ -243,16 +242,156 @@ input:focus-visible {
   border-color: var(--primary);
 }
 
+.profile-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.25rem 0.35rem 0.25rem var(--space-2);
+  color: var(--text);
+  background: var(--surface-muted);
+}
+
+.profile-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: currentcolor;
+  flex: 0 0 auto;
+}
+
+.profile-name {
+  overflow: hidden;
+  max-width: 12rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.profile-menu-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.3rem 0.55rem;
+  color: inherit;
+  background: transparent;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.profile-menu-button:hover,
+.profile-menu-button[aria-expanded="true"] {
+  background: var(--surface);
+}
+
+.profile-menu {
+  position: absolute;
+  z-index: 1;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  display: grid;
+  min-width: 8rem;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.profile-menu form {
+  margin: 0;
+}
+
+.profile-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+}
+
+.profile-menu button:hover {
+  background: var(--surface-muted);
+}
+
 .form-url-field {
   display: grid;
   gap: var(--space-2);
   margin-bottom: var(--space-10);
 }
 
-.form-url-field input {
+.form-url-input-row > input {
   color: var(--text);
   border-color: var(--border-strong);
   background: var(--surface);
+}
+
+.form-url-input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.form-url-input-row > input {
+  min-width: 0;
+  flex: 1;
+}
+
+.owner-toggle {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.owner-toggle input {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+}
+
+.personal-link-section {
+  display: grid;
+  min-height: 2.75rem;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  padding-left: var(--space-3);
+}
+
+.field-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.link-controls {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  font-size: 0.875rem;
+}
+
+.url-link {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+  padding: 0.35rem 0;
+  color: var(--primary);
+  line-height: 1.35;
+}
+
+.url-link:hover {
+  color: var(--primary-hover);
+}
+
+.copy-control {
+  position: relative;
+  flex: 0 0 auto;
 }
 
 .secondary-button {
@@ -318,24 +457,92 @@ input:focus-visible {
   margin-top: var(--space-5);
 }
 
-.result-box {
+.modal-backdrop {
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(15 23 42 / 0.65);
+}
+
+.owner-name-modal {
+  width: min(100%, 28rem);
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.owner-name-modal h1,
+.owner-name-modal p {
+  margin-top: 0;
+}
+
+.owner-name-modal p {
+  color: var(--text-muted);
+}
+
+.owner-name-modal form {
   display: grid;
   gap: var(--space-3);
 }
 
-.result-box input {
+.owner-name-modal input {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 0.7rem 0.8rem;
   color: var(--text);
-  border-color: var(--border-strong);
-  background: var(--page-background);
+  background: var(--surface);
+}
+
+.owner-name-modal .error-box {
+  margin: 0;
 }
 
 .copy-button {
-  justify-self: start;
-  background: var(--success);
+  display: grid;
+  width: 2em;
+  height: 2em;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 0.35em;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.copy-button svg {
+  width: 1em;
+  height: 1em;
+  fill: currentcolor;
 }
 
 .copy-button:hover {
-  background: var(--success-hover);
+  background: var(--surface-muted);
+}
+
+.copy-tooltip {
+  position: absolute;
+  z-index: 2;
+  bottom: calc(100% + var(--space-2));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.3rem var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  background: var(--surface-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.copy-tooltip--error {
+  color: var(--danger-text-light);
+  background: var(--danger-surface-light);
 }
 
 .result-error {
@@ -359,7 +566,8 @@ input:focus-visible {
   .admin-actions,
   .admin-header form,
   .secondary-button,
-  .theme-toggle {
+  .theme-toggle,
+  .profile-control {
     width: 100%;
   }
 
@@ -368,7 +576,25 @@ input:focus-visible {
     align-items: stretch;
   }
 
+  .profile-name {
+    max-width: none;
+    flex: 1;
+  }
+
   .form-url-field {
     margin-bottom: var(--space-6);
+  }
+
+  .personal-link-section {
+    min-height: 4.5rem;
+  }
+
+  .form-url-input-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .form-url-input-row > input {
+    width: 100%;
   }
 }
