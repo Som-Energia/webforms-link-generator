@@ -1,4 +1,5 @@
 import importlib
+import logging
 import sys
 from pathlib import Path
 
@@ -16,6 +17,21 @@ REQUIRED_ENV = {
     "COOKIE_SECURE": "false",
 }
 OWNER = "ada-lovelace"
+
+
+@pytest.fixture()
+def log_messages():
+    logger = logging.getLogger("webforms_links_generator")
+    messages = []
+
+    class ListHandler(logging.Handler):
+        def emit(self, record):
+            messages.append(self.format(record))
+
+    handler = ListHandler()
+    logger.addHandler(handler)
+    yield messages
+    logger.removeHandler(handler)
 
 
 @pytest.fixture()
@@ -67,6 +83,21 @@ def test_logout_clears_admin_cookie(client):
     assert response.status_code == 303
     assert response.headers["Location"] == "/"
     assert "admin_session=;" in response.headers["Set-Cookie"]
+
+
+def test_authentication_logs_are_operational_and_do_not_expose_password(client, log_messages):
+    secret_password = "password-that-must-not-appear"
+
+    rejected = client.post("/auth/login", data={"password": secret_password})
+    accepted = login(client)
+    logged_out = client.post("/auth/logout")
+
+    output = "\n".join(log_messages)
+    assert rejected.status_code == accepted.status_code == logged_out.status_code == 303
+    assert "operation=login outcome=rejected status=303 duration_ms=" in output
+    assert "operation=login outcome=succeeded status=303 duration_ms=" in output
+    assert "operation=logout outcome=succeeded status=303 duration_ms=" in output
+    assert secret_password not in output
 
 
 def test_social_tariff_requires_authentication(client):
@@ -148,6 +179,32 @@ def test_send_signature_generates_link(client, monkeypatch):
     assert calls[0][0] == ("https://jwt.example.test/token",)
     assert calls[0][1]["json"] == {"ff": ["sendSignature"]}
     assert calls[0][1]["headers"]["X-Admin-Gateway-Token"] == "gateway-secret"
+
+
+def test_link_generation_logs_success_without_sensitive_request_or_response_data(client, monkeypatch, log_messages):
+    class FakeResponse:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"data": {"token": "jwt-that-must-not-appear"}}
+
+    custom_url = "https://forms.example.test/alta?private-query=must-not-appear"
+    monkeypatch.setattr("app.main.requests.post", lambda *args, **kwargs: FakeResponse())
+    login(client)
+
+    response = client.post("/api/links/social-tariff", json={"formUrl": custom_url})
+
+    output = "\n".join(log_messages)
+    assert response.status_code == 200
+    assert "operation=link_generation type=social_tariff outcome=accepted" in output
+    assert "operation=jwt_api outcome=completed status=200 duration_ms=" in output
+    assert "operation=link_generation type=social_tariff outcome=succeeded status=200 duration_ms=" in output
+    assert custom_url not in output
+    assert "private-query=must-not-appear" not in output
+    assert "jwt-that-must-not-appear" not in output
+    assert "gateway-secret" not in output
+    assert "https://jwt.example.test/token" not in output
 
 
 def test_social_tariff_uses_custom_form_url(client, monkeypatch):
@@ -301,3 +358,21 @@ def test_social_tariff_removes_existing_owner_when_owner_is_not_supplied(client,
 
     assert response.status_code == 200
     assert response.json == {"link": "https://forms.example.test/alta?plan=solar&tag=vip&token=jwt-token"}
+
+
+def test_social_tariff_logs_upstream_failure_without_request_data(client, monkeypatch, log_messages):
+    class FakeResponse:
+        ok = False
+        status_code = 503
+
+    sensitive_url = "https://forms.example.test/alta?private-query=must-not-appear"
+    monkeypatch.setattr("app.main.requests.post", lambda *args, **kwargs: FakeResponse())
+    login(client)
+
+    response = client.post("/api/links/social-tariff", json={"formUrl": sensitive_url})
+
+    output = "\n".join(log_messages)
+    assert response.status_code == 502
+    assert "operation=jwt_api outcome=completed status=503 duration_ms=" in output
+    assert "operation=link_generation type=social_tariff outcome=failed status=502 duration_ms=" in output
+    assert sensitive_url not in output

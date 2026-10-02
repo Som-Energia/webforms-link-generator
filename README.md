@@ -169,6 +169,12 @@ Set all required environment variables in Portainer before deploy. Keep `COOKIE_
 
 Portainer may also need registry credentials configured so it can pull from Harbor.
 
+### Logs
+
+Open the deployed stack in Portainer, select the `webforms-link-generator` service or its running task, then select **Logs**. Gunicorn access logs are written to stdout and Gunicorn, startup, authentication, link-generation, upstream, and unexpected-error application logs are written as human-readable text to stderr. Portainer shows both streams together.
+
+Application logs intentionally include only operational metadata such as operation, type, outcome, status, and duration. Gunicorn access logs also omit request paths and query strings. Neither log stream includes passwords, secrets, JWTs, cookies, authorization values, request bodies, upstream URLs, or generated links. This makes the logs suitable for operational visibility, but they cannot be used to reconstruct a user request or a generated link.
+
 ## Verification
 
 ```bash

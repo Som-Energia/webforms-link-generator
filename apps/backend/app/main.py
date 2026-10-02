@@ -1,11 +1,15 @@
+import logging
 import os
 import re
 import secrets
+import sys
+import time
 from pathlib import Path
 from urllib.parse import quote, unquote_plus, urlsplit, urlunsplit
 
 import requests
 from flask import Flask, jsonify, redirect, request, send_from_directory
+from werkzeug.exceptions import HTTPException
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from dotenv import load_dotenv
 
@@ -14,6 +18,22 @@ COOKIE_NAME = "admin_session"
 SESSION_MAX_AGE = 60 * 60 * 8
 DEFAULT_FORM_URL = "https://www.somenergia.coop/ca/formulari-contractacio-periodes"
 OWNER_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+LOGGER_NAME = "webforms_links_generator"
+
+
+def _configure_logging() -> logging.Logger:
+    logger = logging.getLogger(LOGGER_NAME)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stderr)
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
+        )
+        logger.addHandler(handler)
+
+    return logger
 
 
 def _custom_form_url(value: object) -> str | None:
@@ -92,16 +112,24 @@ def create_app() -> Flask:
     repository_root = Path(__file__).resolve().parents[3]
     load_dotenv(repository_root / ".env", override=False)
     _load_local_dotenv()
+    logger = _configure_logging()
+    logger.info("operation=startup outcome=config_validation_started")
     dist_dir = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+
+    try:
+        admin_password = _required_env("ADMIN_PASSWORD")
+        session_secret = _required_env("SESSION_SECRET")
+        if len(session_secret) < 32:
+            raise RuntimeError("SESSION_SECRET must be at least 32 characters.")
+
+        admin_gateway_secret = _required_env("ADMIN_GATEWAY_SECRET")
+        jwt_api_url = _required_env("JWT_API_URL")
+    except RuntimeError:
+        logger.error("operation=startup outcome=config_validation_failed")
+        raise
+
+    logger.info("operation=startup outcome=config_validation_succeeded")
     app = Flask(__name__, static_folder=dist_dir / "assets", static_url_path="/assets")
-
-    admin_password = _required_env("ADMIN_PASSWORD")
-    session_secret = _required_env("SESSION_SECRET")
-    if len(session_secret) < 32:
-        raise RuntimeError("SESSION_SECRET must be at least 32 characters.")
-
-    admin_gateway_secret = _required_env("ADMIN_GATEWAY_SECRET")
-    jwt_api_url = _required_env("JWT_API_URL")
     cookie_secure = _env_bool("COOKIE_SECURE", True)
     serializer = URLSafeTimedSerializer(session_secret, salt=COOKIE_NAME)
 
@@ -129,8 +157,13 @@ def create_app() -> Flask:
 
     @app.post("/auth/login")
     def login() -> object:
+        started_at = time.perf_counter()
         password = request.form.get("password")
         if password != admin_password:
+            logger.warning(
+                "operation=login outcome=rejected status=303 duration_ms=%d",
+                (time.perf_counter() - started_at) * 1000,
+            )
             return redirect("/?error=1", code=303)
 
         response = redirect("/admin", code=303)
@@ -143,10 +176,15 @@ def create_app() -> Flask:
             samesite="Lax",
             path="/",
         )
+        logger.info(
+            "operation=login outcome=succeeded status=303 duration_ms=%d",
+            (time.perf_counter() - started_at) * 1000,
+        )
         return response
 
     @app.post("/auth/logout")
     def logout() -> object:
+        started_at = time.perf_counter()
         response = redirect("/", code=303)
         response.delete_cookie(
             COOKIE_NAME,
@@ -155,22 +193,44 @@ def create_app() -> Flask:
             samesite="Lax",
             path="/",
         )
+        logger.info(
+            "operation=logout outcome=succeeded status=303 duration_ms=%d",
+            (time.perf_counter() - started_at) * 1000,
+        )
         return response
 
-    def generate_link(feature_flag: str) -> object:
+    def generate_link(feature_flag: str, link_type: str) -> object:
+        started_at = time.perf_counter()
         if not is_authenticated():
+            logger.warning(
+                "operation=link_generation type=%s outcome=rejected status=401 duration_ms=%d",
+                link_type,
+                (time.perf_counter() - started_at) * 1000,
+            )
             return jsonify({"message": "Unauthorized"}), 401
 
         payload = request.get_json(silent=True) or {}
         owner = payload.get("owner")
         if "owner" in payload and (not isinstance(owner, str) or not OWNER_PATTERN.fullmatch(owner)):
+            logger.warning(
+                "operation=link_generation type=%s outcome=rejected status=400 duration_ms=%d",
+                link_type,
+                (time.perf_counter() - started_at) * 1000,
+            )
             return jsonify({"message": "A valid owner is required."}), 400
 
         try:
             form_url = _custom_form_url(payload.get("formUrl"))
         except (AttributeError, ValueError):
+            logger.warning(
+                "operation=link_generation type=%s outcome=rejected status=400 duration_ms=%d",
+                link_type,
+                (time.perf_counter() - started_at) * 1000,
+            )
             return jsonify({"message": "L'URL del formulari ha de ser una URL HTTPS vàlida."}), 400
 
+        logger.info("operation=link_generation type=%s outcome=accepted", link_type)
+        upstream_started_at = time.perf_counter()
         try:
             response = requests.post(
                 jwt_api_url,
@@ -183,7 +243,15 @@ def create_app() -> Flask:
                 timeout=10,
             )
         except requests.RequestException as error:
-            app.logger.exception("Could not reach JWT API")
+            logger.error(
+                "operation=jwt_api outcome=failed duration_ms=%d",
+                (time.perf_counter() - upstream_started_at) * 1000,
+            )
+            logger.error(
+                "operation=link_generation type=%s outcome=failed status=502 duration_ms=%d",
+                link_type,
+                (time.perf_counter() - started_at) * 1000,
+            )
             return jsonify(
                 {
                     "message": "No s'ha pogut generar l'enllaç.",
@@ -192,7 +260,16 @@ def create_app() -> Flask:
             ), 502
 
         if not response.ok:
-            app.logger.warning("JWT API returned status %s", response.status_code)
+            logger.warning(
+                "operation=jwt_api outcome=completed status=%d duration_ms=%d",
+                response.status_code,
+                (time.perf_counter() - upstream_started_at) * 1000,
+            )
+            logger.error(
+                "operation=link_generation type=%s outcome=failed status=502 duration_ms=%d",
+                link_type,
+                (time.perf_counter() - started_at) * 1000,
+            )
             return jsonify(
                 {
                     "message": "L'API externa no pot generar el token.",
@@ -200,26 +277,59 @@ def create_app() -> Flask:
                 }
             ), 502
 
+        logger.info(
+            "operation=jwt_api outcome=completed status=%d duration_ms=%d",
+            response.status_code,
+            (time.perf_counter() - upstream_started_at) * 1000,
+        )
+
         try:
             token = response.json()["data"]["token"]
         except (ValueError, KeyError, TypeError):
+            logger.error(
+                "operation=link_generation type=%s outcome=failed status=502 duration_ms=%d",
+                link_type,
+                (time.perf_counter() - started_at) * 1000,
+            )
             return jsonify({"message": "L'API externa no ha retornat un JWT vàlid."}), 502
 
         if not isinstance(token, str) or not token:
+            logger.error(
+                "operation=link_generation type=%s outcome=failed status=502 duration_ms=%d",
+                link_type,
+                (time.perf_counter() - started_at) * 1000,
+            )
             return jsonify({"message": "L'API externa no ha retornat un JWT vàlid."}), 502
 
         if form_url:
+            logger.info(
+                "operation=link_generation type=%s outcome=succeeded status=200 duration_ms=%d",
+                link_type,
+                (time.perf_counter() - started_at) * 1000,
+            )
             return jsonify({"link": _link_with_token(form_url, token, owner)})
 
+        logger.info(
+            "operation=link_generation type=%s outcome=succeeded status=200 duration_ms=%d",
+            link_type,
+            (time.perf_counter() - started_at) * 1000,
+        )
         return jsonify({"link": _link_with_token(f"{DEFAULT_FORM_URL}?form_type=domestic", token, owner)})
 
     @app.post("/api/links/social-tariff")
     def social_tariff_link() -> object:
-        return generate_link("socialTariffByPass")
+        return generate_link("socialTariffByPass", "social_tariff")
 
     @app.post("/api/links/send-signature")
     def send_signature_link() -> object:
-        return generate_link("sendSignature")
+        return generate_link("sendSignature", "send_signature")
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(error: Exception) -> object:
+        if isinstance(error, HTTPException):
+            return error
+        logger.error("operation=request outcome=unexpected_error status=500")
+        return jsonify({"message": "Internal server error"}), 500
 
     @app.get("/")
     def root() -> object:
