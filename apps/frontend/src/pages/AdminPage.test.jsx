@@ -16,7 +16,9 @@ import { AdminPage, DEFAULT_FORM_URL, FORM_URL_ERROR } from "./AdminPage";
 import { OWNER_NAME_STORAGE_KEY } from "../owner/owner";
 import { LEAD_TAG_STORAGE_KEY } from "../campaign/leadTag";
 
-const ISO_DATE = expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+const ISO_DATE = expect.stringMatching(
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+);
 
 vi.mock("../api/links", () => ({
   generateSendSignatureLink: vi.fn(),
@@ -52,7 +54,9 @@ describe("AdminPage", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
-    const ownerToggle = screen.getByRole("switch", { name: "Afegir el meu usuari" });
+    const ownerToggle = screen.getByRole("switch", {
+      name: "Afegir el meu usuari",
+    });
     expect(ownerToggle.checked).toBe(true);
     expect(screen.getByText("owner=ada-lovelace")).not.toBeNull();
   });
@@ -61,20 +65,30 @@ describe("AdminPage", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
-    const formUrl = screen.getByLabelText("URL del formulari de destí (opcional)");
+    const formUrl = screen.getByLabelText(
+      "URL del formulari de destí (opcional)",
+    );
     fireEvent.change(formUrl, { target: { value: "https:/" } });
     expect(formUrl.getAttribute("aria-invalid")).toBe("false");
 
-    fireEvent.change(formUrl, { target: { value: "http://forms.example.test" } });
+    fireEvent.change(formUrl, {
+      target: { value: "http://forms.example.test" },
+    });
 
     expect(formUrl.getAttribute("aria-invalid")).toBe("true");
     expect(screen.getByText(FORM_URL_ERROR)).not.toBeNull();
-    expect(document.querySelector(".personal-link-section")?.textContent).toBe("");
-    for (const button of screen.getAllByRole("button", { name: "Genera l'enllaç" })) {
+    expect(document.querySelector(".personal-link-section")?.textContent).toBe(
+      "",
+    );
+    for (const button of screen.getAllByRole("button", {
+      name: "Genera l'enllaç",
+    })) {
       expect(button.disabled).toBe(true);
     }
 
-    fireEvent.change(formUrl, { target: { value: "https://forms.example.test" } });
+    fireEvent.change(formUrl, {
+      target: { value: "https://forms.example.test" },
+    });
 
     expect(formUrl.getAttribute("aria-invalid")).toBe("false");
     expect(screen.queryByText(FORM_URL_ERROR)).toBeNull();
@@ -84,7 +98,9 @@ describe("AdminPage", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
-    const formUrl = screen.getByLabelText("URL del formulari de destí (opcional)");
+    const formUrl = screen.getByLabelText(
+      "URL del formulari de destí (opcional)",
+    );
     fireEvent.change(formUrl, { target: { value: "forms.example.test/alta" } });
     fireEvent.blur(formUrl);
 
@@ -96,29 +112,47 @@ describe("AdminPage", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
-    const formUrl = screen.getByLabelText("URL del formulari de destí (opcional)");
+    const formUrl = screen.getByLabelText(
+      "URL del formulari de destí (opcional)",
+    );
     expect(screen.queryByRole("button", { name: "Esborra la URL" })).toBeNull();
-    fireEvent.change(formUrl, { target: { value: "https://forms.example.test/alta" } });
+    fireEvent.change(formUrl, {
+      target: { value: "https://forms.example.test/alta" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Esborra la URL" }));
 
     expect(formUrl.value).toBe("");
     expect(document.activeElement).toBe(formUrl);
-    expect(screen.getByRole("link", { name: `${DEFAULT_FORM_URL}&owner=ada-lovelace` })).not.toBeNull();
+    expect(
+      screen.getByRole("link", {
+        name: `${DEFAULT_FORM_URL}&owner=ada-lovelace`,
+      }),
+    ).not.toBeNull();
   });
 
   it("hides the personal link and omits owner when the toggle is disabled", async () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
-    generateSocialTariffLink.mockResolvedValue("https://forms.example.test/alta?token=jwt-token");
+    generateSocialTariffLink.mockResolvedValue(
+      "https://forms.example.test/alta?token=jwt-token",
+    );
     render(<AdminPage />);
 
     fireEvent.click(screen.getByLabelText("Afegir el meu usuari"));
 
-    expect(screen.queryByRole("link", { name: `${DEFAULT_FORM_URL}&owner=ada-lovelace` })).toBeNull();
-    expect(document.querySelector(".personal-link-section")?.textContent).toBe("");
+    expect(
+      screen.queryByRole("link", {
+        name: `${DEFAULT_FORM_URL}&owner=ada-lovelace`,
+      }),
+    ).toBeNull();
+    expect(document.querySelector(".personal-link-section")?.textContent).toBe(
+      "",
+    );
     const socialTariffCard = screen
       .getByRole("heading", { name: "Tarifa social" })
       .closest("article");
-    fireEvent.click(within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }));
+    fireEvent.click(
+      within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }),
+    );
 
     await waitFor(() => {
       expect(generateSocialTariffLink).toHaveBeenCalledWith("", ISO_DATE);
@@ -141,8 +175,14 @@ describe("AdminPage", () => {
     const sendSignatureCard = screen
       .getByRole("heading", { name: "Enviament de signatura" })
       .closest("article");
-    fireEvent.click(within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }));
-    fireEvent.click(within(sendSignatureCard).getByRole("button", { name: "Genera l'enllaç" }));
+    fireEvent.click(
+      within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }),
+    );
+    fireEvent.click(
+      within(sendSignatureCard).getByRole("button", {
+        name: "Genera l'enllaç",
+      }),
+    );
 
     const socialTariffWithOwner =
       "https://forms.example.test/alta?token=social-token&uid=3300&owner=ada-lovelace#step-2";
@@ -162,7 +202,9 @@ describe("AdminPage", () => {
 
     fireEvent.click(screen.getByLabelText("Afegir el meu usuari"));
 
-    expect(await screen.findByRole("link", { name: socialTariffWithOwner })).not.toBeNull();
+    expect(
+      await screen.findByRole("link", { name: socialTariffWithOwner }),
+    ).not.toBeNull();
     expect(
       await screen.findByRole("link", {
         name: "https://forms.example.test/signatura?token=signature-token&source=email&owner=ada-lovelace#final",
@@ -174,12 +216,15 @@ describe("AdminPage", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
-    fireEvent.change(screen.getByLabelText("URL del formulari de destí (opcional)"), {
-      target: {
-        value:
-          "https://forms.example.test/contractacio?form_type=enterprise&owner=old-owner&uid=3300#step-2",
+    fireEvent.change(
+      screen.getByLabelText("URL del formulari de destí (opcional)"),
+      {
+        target: {
+          value:
+            "https://forms.example.test/contractacio?form_type=enterprise&owner=old-owner&uid=3300#step-2",
+        },
       },
-    });
+    );
 
     expect(
       screen.getByRole("link", {
@@ -192,14 +237,22 @@ describe("AdminPage", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Obre el menú de perfil" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Obre el menú de perfil" }),
+    );
     fireEvent.click(screen.getByRole("menuitem", { name: "Editar" }));
     fireEvent.change(screen.getByLabelText("Usuari ERP"), {
       target: { value: "Grace Hopper" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Desa el nom d'usuari" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Desa el nom d'usuari" }),
+    );
 
-    expect(screen.getByRole("link", { name: `${DEFAULT_FORM_URL}&owner=grace-hopper` })).not.toBeNull();
+    expect(
+      screen.getByRole("link", {
+        name: `${DEFAULT_FORM_URL}&owner=grace-hopper`,
+      }),
+    ).not.toBeNull();
   });
 
   it("copies the personal link and confirms success", async () => {
@@ -208,10 +261,14 @@ describe("AdminPage", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Copia l'enllaç personal" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Copia l'enllaç personal" }),
+    );
 
     await waitFor(() => {
-      expect(writeText).toHaveBeenCalledWith(`${DEFAULT_FORM_URL}&owner=ada-lovelace`);
+      expect(writeText).toHaveBeenCalledWith(
+        `${DEFAULT_FORM_URL}&owner=ada-lovelace`,
+      );
     });
     expect(screen.getByText("Copiat").getAttribute("role")).toBe("status");
   });
@@ -222,12 +279,18 @@ describe("AdminPage", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Copia l'enllaç personal" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Copia l'enllaç personal" }),
+    );
 
     expect(
       await screen.findByText("No s'ha pogut copiar. Torna-ho a provar."),
     ).not.toBeNull();
-    expect(screen.getByText("No s'ha pogut copiar. Torna-ho a provar.").getAttribute("role")).toBe("status");
+    expect(
+      screen
+        .getByText("No s'ha pogut copiar. Torna-ho a provar.")
+        .getAttribute("role"),
+    ).toBe("status");
   });
 
   it("passes the populated custom form URL to the link generator", async () => {
@@ -264,11 +327,15 @@ describe("AdminPage", () => {
       expect(generateSocialTariffLink).toHaveBeenCalledWith(formUrl, ISO_DATE);
     });
     const generatedUrl = `${formUrl}&token=jwt-token&owner=ada-lovelace`;
-    const generatedLink = within(socialTariffCard).getByRole("link", { name: generatedUrl });
+    const generatedLink = within(socialTariffCard).getByRole("link", {
+      name: generatedUrl,
+    });
     expect(generatedLink.getAttribute("href")).toBe(generatedUrl);
     expect(generatedLink.getAttribute("target")).toBe("_blank");
     expect(generatedLink.getAttribute("rel")).toBe("noopener noreferrer");
-    fireEvent.click(within(socialTariffCard).getByRole("button", { name: "Copia l'enllaç" }));
+    fireEvent.click(
+      within(socialTariffCard).getByRole("button", { name: "Copia l'enllaç" }),
+    );
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(generatedUrl);
     });
@@ -288,7 +355,9 @@ describe("AdminPage", () => {
       .getByRole("heading", { name: "Enviament de signatura" })
       .closest("article");
     expect(sendSignatureCard).not.toBeNull();
-    expect(within(sendSignatureCard).getByText(/sendSignature/)).not.toBeNull();
+    expect(
+      within(sendSignatureCard).getByText(/sendSignaturit/),
+    ).not.toBeNull();
 
     fireEvent.change(
       screen.getByLabelText("URL del formulari de destí (opcional)"),
@@ -306,11 +375,15 @@ describe("AdminPage", () => {
       expect(generateSendSignatureLink).toHaveBeenCalledWith(formUrl, ISO_DATE);
     });
     const generatedUrl = `${formUrl}&token=jwt-token&owner=ada-lovelace`;
-    const generatedLink = within(sendSignatureCard).getByRole("link", { name: generatedUrl });
+    const generatedLink = within(sendSignatureCard).getByRole("link", {
+      name: generatedUrl,
+    });
     expect(generatedLink.getAttribute("href")).toBe(generatedUrl);
     expect(generatedLink.getAttribute("target")).toBe("_blank");
     expect(generatedLink.getAttribute("rel")).toBe("noopener noreferrer");
-    fireEvent.click(within(sendSignatureCard).getByRole("button", { name: "Copia l'enllaç" }));
+    fireEvent.click(
+      within(sendSignatureCard).getByRole("button", { name: "Copia l'enllaç" }),
+    );
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(generatedUrl);
     });
@@ -319,7 +392,9 @@ describe("AdminPage", () => {
   it("requires an owner name on first visit and persists a valid name", () => {
     render(<AdminPage />);
 
-    expect(screen.getByRole("dialog", { name: "Identifica el teu enllaç" })).not.toBeNull();
+    expect(
+      screen.getByRole("dialog", { name: "Identifica el teu enllaç" }),
+    ).not.toBeNull();
     expect(
       screen.getByText(
         "El teu usuari d'ERP identificarà cada enllaç generat i es guardarà a la fitxa del lead per identificar contractes que venen d'ET.",
@@ -328,9 +403,13 @@ describe("AdminPage", () => {
     fireEvent.change(screen.getByLabelText("Usuari ERP"), {
       target: { value: "Joan Àlex--Smith" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Desa el nom d'usuari" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Desa el nom d'usuari" }),
+    );
 
-    expect(window.localStorage.getItem(OWNER_NAME_STORAGE_KEY)).toBe("Joan Àlex--Smith");
+    expect(window.localStorage.getItem(OWNER_NAME_STORAGE_KEY)).toBe(
+      "Joan Àlex--Smith",
+    );
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
@@ -339,23 +418,33 @@ describe("AdminPage", () => {
     render(<AdminPage />);
 
     expect(screen.getByText("Ada Lovelace")).not.toBeNull();
-    const profileMenuButton = screen.getByRole("button", { name: "Obre el menú de perfil" });
+    const profileMenuButton = screen.getByRole("button", {
+      name: "Obre el menú de perfil",
+    });
     fireEvent.click(profileMenuButton);
     expect(profileMenuButton.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(screen.getByRole("menuitem", { name: "Editar" }));
     fireEvent.change(screen.getByLabelText("Usuari ERP"), {
       target: { value: "---" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Desa el nom d'usuari" }));
-    expect(screen.getByRole("alert").textContent).toBe("L'usuari ERP és obligatori.");
-    expect(window.localStorage.getItem(OWNER_NAME_STORAGE_KEY)).toBe("Ada Lovelace");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Desa el nom d'usuari" }),
+    );
+    expect(screen.getByRole("alert").textContent).toBe(
+      "L'usuari ERP és obligatori.",
+    );
+    expect(window.localStorage.getItem(OWNER_NAME_STORAGE_KEY)).toBe(
+      "Ada Lovelace",
+    );
   });
 
   it("cancels the profile edit when a name already exists", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Obre el menú de perfil" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Obre el menú de perfil" }),
+    );
     fireEvent.click(screen.getByRole("menuitem", { name: "Editar" }));
     fireEvent.change(screen.getByLabelText("Usuari ERP"), {
       target: { value: "Grace Hopper" },
@@ -363,7 +452,9 @@ describe("AdminPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel·la" }));
 
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(window.localStorage.getItem(OWNER_NAME_STORAGE_KEY)).toBe("Ada Lovelace");
+    expect(window.localStorage.getItem(OWNER_NAME_STORAGE_KEY)).toBe(
+      "Ada Lovelace",
+    );
   });
 
   it("does not allow cancelling the first owner name prompt", () => {
@@ -376,7 +467,9 @@ describe("AdminPage", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Obre el menú de perfil" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Obre el menú de perfil" }),
+    );
     expect(screen.getByRole("menu")).not.toBeNull();
     fireEvent.pointerDown(document.body);
 
@@ -388,7 +481,9 @@ describe("AdminPage", () => {
     render(<AdminPage />);
 
     expect(screen.queryByLabelText("Etiqueta de campanya")).toBeNull();
-    fireEvent.click(screen.getByRole("switch", { name: "Afegir etiqueta de campanya" }));
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Afegir etiqueta de campanya" }),
+    );
 
     const leadTagInput = screen.getByLabelText("Etiqueta de campanya");
     expect(document.activeElement).toBe(leadTagInput);
@@ -410,10 +505,14 @@ describe("AdminPage", () => {
     );
     render(<AdminPage />);
 
-    fireEvent.click(screen.getByRole("switch", { name: "Afegir el meu usuari" }));
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Afegir el meu usuari" }),
+    );
 
     expect(
-      screen.getByRole("link", { name: `${DEFAULT_FORM_URL}&lead_tag=campanya-tardor` }),
+      screen.getByRole("link", {
+        name: `${DEFAULT_FORM_URL}&lead_tag=campanya-tardor`,
+      }),
     ).not.toBeNull();
   });
 
@@ -421,15 +520,22 @@ describe("AdminPage", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     const { unmount } = render(<AdminPage />);
 
-    fireEvent.click(screen.getByRole("switch", { name: "Afegir etiqueta de campanya" }));
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Afegir etiqueta de campanya" }),
+    );
     fireEvent.change(screen.getByLabelText("Etiqueta de campanya"), {
       target: { value: "campanya-tardor" },
     });
     unmount();
     render(<AdminPage />);
 
-    expect(screen.getByRole("switch", { name: "Afegir etiqueta de campanya" }).checked).toBe(true);
-    expect(screen.getByLabelText("Etiqueta de campanya").value).toBe("campanya-tardor");
+    expect(
+      screen.getByRole("switch", { name: "Afegir etiqueta de campanya" })
+        .checked,
+    ).toBe(true);
+    expect(screen.getByLabelText("Etiqueta de campanya").value).toBe(
+      "campanya-tardor",
+    );
   });
 
   it("adds and updates lead_tag on generated links", async () => {
@@ -438,20 +544,26 @@ describe("AdminPage", () => {
       LEAD_TAG_STORAGE_KEY,
       JSON.stringify({ isEnabled: true, tag: "campanya-tardor" }),
     );
-    generateSocialTariffLink.mockResolvedValue("https://forms.example.test/alta?token=jwt-token");
+    generateSocialTariffLink.mockResolvedValue(
+      "https://forms.example.test/alta?token=jwt-token",
+    );
     render(<AdminPage />);
 
     const socialTariffCard = screen
       .getByRole("heading", { name: "Tarifa social" })
       .closest("article");
-    fireEvent.click(within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }));
+    fireEvent.click(
+      within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }),
+    );
 
     expect(generateSocialTariffLink).toHaveBeenCalledWith("", ISO_DATE);
     await within(socialTariffCard).findByRole("link", {
       name: "https://forms.example.test/alta?token=jwt-token&owner=ada-lovelace&lead_tag=campanya-tardor",
     });
 
-    fireEvent.click(screen.getByRole("switch", { name: "Afegir etiqueta de campanya" }));
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Afegir etiqueta de campanya" }),
+    );
 
     expect(
       within(socialTariffCard).getByRole("link", {
@@ -464,12 +576,22 @@ describe("AdminPage", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
-    const helpButton = screen.getByRole("button", { name: "Ajuda: com funciona aquesta eina" });
+    const helpButton = screen.getByRole("button", {
+      name: "Ajuda: com funciona aquesta eina",
+    });
     fireEvent.click(helpButton);
 
-    const dialog = screen.getByRole("dialog", { name: "Com funciona el generador d'enllaços" });
-    expect(within(dialog).getByRole("heading", { name: "Quin enllaç he de fer servir?" })).not.toBeNull();
-    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Tanca l'ajuda" }));
+    const dialog = screen.getByRole("dialog", {
+      name: "Com funciona el generador d'enllaços",
+    });
+    expect(
+      within(dialog).getByRole("heading", {
+        name: "Quin enllaç he de fer servir?",
+      }),
+    ).not.toBeNull();
+    expect(document.activeElement).toBe(
+      within(dialog).getByRole("button", { name: "Tanca l'ajuda" }),
+    );
 
     fireEvent.keyDown(dialog, { key: "Escape" });
 
@@ -481,11 +603,15 @@ describe("AdminPage", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Ajuda: com funciona aquesta eina" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Ajuda: com funciona aquesta eina" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Entesos" }));
     expect(screen.queryByRole("dialog")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Ajuda: com funciona aquesta eina" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Ajuda: com funciona aquesta eina" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Tanca l'ajuda" }));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -494,9 +620,13 @@ describe("AdminPage", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Obre el menú de perfil" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Obre el menú de perfil" }),
+    );
     const logoutButton = screen.getByRole("menuitem", { name: "Sortir" });
-    expect(logoutButton.closest("form")?.getAttribute("action")).toBe("/auth/logout");
+    expect(logoutButton.closest("form")?.getAttribute("action")).toBe(
+      "/auth/logout",
+    );
     expect(logoutButton.closest("form")?.getAttribute("method")).toBe("POST");
   });
 });
