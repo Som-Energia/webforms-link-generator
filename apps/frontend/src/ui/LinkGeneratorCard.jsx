@@ -57,7 +57,7 @@ export function updateLinkOwner(link, owner) {
   }
 }
 
-export function LinkGeneratorCard({ title, description, generateLink, owner, expiryMinutes }) {
+export function LinkGeneratorCard({ title, description, generateLink, owner, expiryMinutes, disabled = false }) {
   const [isLoading, setIsLoading] = useState(false);
   const [link, setLink] = useState(null);
   const [error, setError] = useState(null);
@@ -131,12 +131,23 @@ export function LinkGeneratorCard({ title, description, generateLink, owner, exp
       <p>{description}</p>
 
       <div className="generator-actions">
-        <button type="button" className="primary-button" onClick={handleGenerate} disabled={isLoading}>
+        <button
+          type="button"
+          className="primary-button"
+          onClick={handleGenerate}
+          disabled={isLoading || disabled}
+          aria-busy={isLoading}
+        >
+          {isLoading ? <span className="spinner" aria-hidden="true" /> : null}
           {isLoading ? "S'està generant..." : "Genera l'enllaç"}
         </button>
 
         {expiryMinutes ? (
-          <p className="expiry-notice" role="status" aria-live="polite">
+          <p
+            className={`expiry-notice${isExpired ? " expiry-notice--expired" : countdown ? " expiry-notice--active" : ""}`}
+            role="status"
+            aria-live="polite"
+          >
             {isExpired
               ? "L'enllaç ha expirat."
               : countdown
@@ -146,12 +157,16 @@ export function LinkGeneratorCard({ title, description, generateLink, owner, exp
         ) : null}
       </div>
 
-      {error ? <div className="result-error">{error}</div> : null}
+      {error ? (
+        <div className="result-error" role="alert">
+          {error}
+        </div>
+      ) : null}
 
       {link ? (
-        <div className="result-box">
+        <div className={`result-box${isExpired ? " result-box--expired" : ""}`}>
           <div className="link-controls">
-            {canOpenLink ? (
+            {canOpenLink && !isExpired ? (
               <a className="url-link" href={link} target="_blank" rel="noopener noreferrer">
                 {link}
               </a>

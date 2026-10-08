@@ -25,8 +25,37 @@ export function createPersonalLink(formUrl, owner) {
   }
 }
 
+
+export const FORM_URL_ERROR =
+  "Introdueix una URL HTTPS vàlida, per exemple https://www.somenergia.coop/…";
+
+export function isValidFormUrl(formUrl) {
+  const value = formUrl.trim();
+  if (!value) return true;
+
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export function completeFormUrl(formUrl) {
+  const value = formUrl.trim();
+  if (!value || /^[a-z][a-z\d+.-]*:/i.test(value) || !value.includes(".")) {
+    return value;
+  }
+
+  return `https://${value.replace(/^\/+/, "")}`;
+}
+
+function isTypingHttpsPrefix(formUrl) {
+  return "https://".startsWith(formUrl.trim().toLowerCase());
+}
+
 export function AdminPage() {
   const [formUrl, setFormUrl] = useState("");
+  const [isFormUrlTouched, setIsFormUrlTouched] = useState(false);
   const [includesOwner, setIncludesOwner] = useState(true);
   const [theme, setTheme] = useState(resolveInitialTheme);
   const [ownerName, setOwnerName] = useState(readOwnerName);
@@ -34,16 +63,36 @@ export function AdminPage() {
     () => !normalizeOwner(ownerName),
   );
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileControlRef = useRef(null);
   const profileMenuButtonRef = useRef(null);
   const editProfileButtonRef = useRef(null);
+  const formUrlInputRef = useRef(null);
   const owner = normalizeOwner(ownerName);
+  const isFormUrlValid = isValidFormUrl(formUrl);
+  const showFormUrlError =
+    !isFormUrlValid && (isFormUrlTouched || !isTypingHttpsPrefix(formUrl));
   const personalLink =
-    includesOwner && owner ? createPersonalLink(formUrl, owner) : "";
+    includesOwner && owner && isFormUrlValid
+      ? createPersonalLink(formUrl, owner)
+      : "";
 
   useEffect(() => {
     if (isProfileMenuOpen) {
       editProfileButtonRef.current?.focus();
     }
+  }, [isProfileMenuOpen]);
+
+  useEffect(() => {
+    if (!isProfileMenuOpen) return undefined;
+
+    function handlePointerDown(event) {
+      if (!profileControlRef.current?.contains(event.target)) {
+        setIsProfileMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [isProfileMenuOpen]);
 
   const handleChangeTheme = (theme) => {
@@ -54,6 +103,12 @@ export function AdminPage() {
     saveOwnerName(name);
     setOwnerName(name);
     setIsEditingOwner(false);
+  }
+
+  function handleClearFormUrl() {
+    setFormUrl("");
+    setIsFormUrlTouched(false);
+    formUrlInputRef.current?.focus();
   }
 
   function handleProfileMenuKeyDown(event) {
@@ -82,13 +137,14 @@ export function AdminPage() {
       <header className="admin-header">
         <div className="admin-brand">
           <LogoIcon theme={theme} />
+          <span className="admin-title">Generador d'enllaços</span>
           <data className="admin-version" value={version}>
             v{version}
           </data>
         </div>
         <div className="admin-actions">
           <ThemeToggle changeTheme={handleChangeTheme} />
-          <div className="profile-control">
+          <div className="profile-control" ref={profileControlRef}>
             <svg
               className="profile-icon"
               viewBox="0 0 24 24"
@@ -107,7 +163,9 @@ export function AdminPage() {
               aria-controls="profile-menu"
               onClick={() => setIsProfileMenuOpen((isOpen) => !isOpen)}
             >
-              <span aria-hidden="true">...</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 10l5 5 5-5H7Z" />
+              </svg>
             </button>
             {isProfileMenuOpen ? (
               <div
@@ -137,44 +195,113 @@ export function AdminPage() {
           </div>
         </div>
       </header>
-      <div className="form-url-field">
-        <label htmlFor="form-url">URL del formulari de destí (opcional)</label>
-        <div className="form-url-input-row">
-          <input
-            id="form-url"
-            type="url"
-            value={formUrl}
-            onChange={(event) => setFormUrl(event.target.value)}
-            placeholder="https://somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic"
-          />
-          <label className="owner-toggle">
+
+      <section className="form-url-panel" aria-labelledby="form-url-title">
+        <div className="panel-heading">
+          <h1 id="form-url-title">Configura l'enllaç</h1>
+          <p>
+            Tria el formulari de destí i si vols identificar-te als enllaços
+            que generis.
+          </p>
+        </div>
+
+        <div className="form-url-field">
+          <label htmlFor="form-url">URL del formulari de destí (opcional)</label>
+          <div
+            className={`text-input${showFormUrlError ? " text-input--invalid" : ""}`}
+          >
+            <svg className="text-input-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10.6 13.4a1 1 0 0 1 0-1.4l3.5-3.5a1 1 0 1 1 1.4 1.4L12 13.4a1 1 0 0 1-1.4 0Zm-2.8 5.2a4 4 0 0 1-2.8-6.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a2 2 0 0 0 2.8 2.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a4 4 0 0 1-2.8 1.2Zm8-5a1 1 0 0 1-.7-1.7l2.1-2.1a2 2 0 0 0-2.8-2.8l-2.1 2.1a1 1 0 1 1-1.4-1.4l2.1-2.1a4 4 0 0 1 5.6 5.6l-2.1 2.1a1 1 0 0 1-.7.3Z" />
+            </svg>
+            <input
+              ref={formUrlInputRef}
+              id="form-url"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              spellCheck={false}
+              value={formUrl}
+              aria-invalid={showFormUrlError}
+              aria-describedby="form-url-hint"
+              onChange={(event) => setFormUrl(event.target.value)}
+              onBlur={() => {
+                setFormUrl((value) => completeFormUrl(value));
+                setIsFormUrlTouched(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && formUrl) handleClearFormUrl();
+              }}
+              placeholder={DEFAULT_FORM_URL}
+            />
+            {formUrl ? (
+              <button
+                type="button"
+                className="text-input-clear"
+                aria-label="Esborra la URL"
+                title="Esborra la URL (Esc)"
+                onClick={handleClearFormUrl}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z" />
+                </svg>
+              </button>
+            ) : null}
+          </div>
+          <p
+            id="form-url-hint"
+            className={showFormUrlError ? "field-error" : "field-hint"}
+            aria-live="polite"
+          >
+            {showFormUrlError
+              ? FORM_URL_ERROR
+              : formUrl.trim()
+                ? "S'utilitzarà aquesta URL per generar els enllaços."
+                : "Si la deixes buida, s'utilitzarà el formulari de contractació domèstica."}
+          </p>
+        </div>
+
+        <div className="owner-toggle-row">
+          <label className="switch">
             <input
               type="checkbox"
+              role="switch"
               checked={includesOwner}
               onChange={(event) => setIncludesOwner(event.target.checked)}
             />
-            Afegir el meu usuari
+            <span className="switch-track" aria-hidden="true">
+              <span className="switch-thumb" />
+            </span>
+            <span className="switch-label">Afegir el meu usuari</span>
           </label>
-        </div>
-        <div className="personal-link-section">
-          {personalLink ? (
-            <div className="link-controls">
-              <a
-                className="url-link"
-                href={personalLink}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {personalLink}
-              </a>
-              <CopyButton
-                label="Copia l'enllaç personal"
-                value={personalLink}
-              />
-            </div>
+          {owner ? (
+            <span className="field-hint">
+              Afegeix <code>owner={owner}</code> a l'enllaç.
+            </span>
           ) : null}
         </div>
-      </div>
+
+        <div className="personal-link-section">
+          {personalLink ? (
+            <>
+              <span className="field-label">El teu enllaç personal</span>
+              <div className="link-controls">
+                <a
+                  className="url-link"
+                  href={personalLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {personalLink}
+                </a>
+                <CopyButton
+                  label="Copia l'enllaç personal"
+                  value={personalLink}
+                />
+              </div>
+            </>
+          ) : null}
+        </div>
+      </section>
 
       <section className="cards-grid" aria-label="Generadors d'enllaços">
         <LinkGeneratorCard
@@ -191,6 +318,7 @@ export function AdminPage() {
           }
           owner={includesOwner ? owner : undefined}
           expiryMinutes={30}
+          disabled={!isFormUrlValid}
         />
         <LinkGeneratorCard
           title="Enviament de signatura"
@@ -209,10 +337,15 @@ export function AdminPage() {
           }
           owner={includesOwner ? owner : undefined}
           expiryMinutes={30}
+          disabled={!isFormUrlValid}
         />
       </section>
       {isEditingOwner ? (
-        <OwnerNameModal initialName={ownerName} onSave={handleSaveOwnerName} />
+        <OwnerNameModal
+          initialName={ownerName}
+          onSave={handleSaveOwnerName}
+          onCancel={owner ? () => setIsEditingOwner(false) : undefined}
+        />
       ) : null}
     </main>
   );

@@ -12,7 +12,7 @@ import {
   generateSocialTariffLink,
 } from "../api/links";
 import { version } from "../../package.json";
-import { AdminPage, DEFAULT_FORM_URL } from "./AdminPage";
+import { AdminPage, DEFAULT_FORM_URL, FORM_URL_ERROR } from "./AdminPage";
 import { OWNER_NAME_STORAGE_KEY } from "../owner/owner";
 
 vi.mock("../api/links", () => ({
@@ -45,15 +45,62 @@ describe("AdminPage", () => {
     expect(personalLink.getAttribute("rel")).toBe("noopener noreferrer");
   });
 
-  it("positions the owner toggle beside the form URL input", () => {
+  it("renders the owner toggle as a switch that is on by default", () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    render(<AdminPage />);
+
+    const ownerToggle = screen.getByRole("switch", { name: "Afegir el meu usuari" });
+    expect(ownerToggle.checked).toBe(true);
+    expect(screen.getByText("owner=ada-lovelace")).not.toBeNull();
+  });
+
+  it("validates the form URL while typing and disables generation when invalid", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
 
     const formUrl = screen.getByLabelText("URL del formulari de destí (opcional)");
-    const ownerToggle = screen.getByLabelText("Afegir el meu usuari");
+    fireEvent.change(formUrl, { target: { value: "https:/" } });
+    expect(formUrl.getAttribute("aria-invalid")).toBe("false");
 
-    expect(formUrl.parentElement?.className).toBe("form-url-input-row");
-    expect(ownerToggle.closest("label")?.parentElement).toBe(formUrl.parentElement);
+    fireEvent.change(formUrl, { target: { value: "http://forms.example.test" } });
+
+    expect(formUrl.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByText(FORM_URL_ERROR)).not.toBeNull();
+    expect(document.querySelector(".personal-link-section")?.textContent).toBe("");
+    for (const button of screen.getAllByRole("button", { name: "Genera l'enllaç" })) {
+      expect(button.disabled).toBe(true);
+    }
+
+    fireEvent.change(formUrl, { target: { value: "https://forms.example.test" } });
+
+    expect(formUrl.getAttribute("aria-invalid")).toBe("false");
+    expect(screen.queryByText(FORM_URL_ERROR)).toBeNull();
+  });
+
+  it("adds the https scheme on blur when it is missing", () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    render(<AdminPage />);
+
+    const formUrl = screen.getByLabelText("URL del formulari de destí (opcional)");
+    fireEvent.change(formUrl, { target: { value: "forms.example.test/alta" } });
+    fireEvent.blur(formUrl);
+
+    expect(formUrl.value).toBe("https://forms.example.test/alta");
+    expect(formUrl.getAttribute("aria-invalid")).toBe("false");
+  });
+
+  it("clears the form URL and restores the default form", () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    render(<AdminPage />);
+
+    const formUrl = screen.getByLabelText("URL del formulari de destí (opcional)");
+    expect(screen.queryByRole("button", { name: "Esborra la URL" })).toBeNull();
+    fireEvent.change(formUrl, { target: { value: "https://forms.example.test/alta" } });
+    fireEvent.click(screen.getByRole("button", { name: "Esborra la URL" }));
+
+    expect(formUrl.value).toBe("");
+    expect(document.activeElement).toBe(formUrl);
+    expect(screen.getByRole("link", { name: `${DEFAULT_FORM_URL}&owner=ada-lovelace` })).not.toBeNull();
   });
 
   it("hides the personal link and omits owner when the toggle is disabled", async () => {
@@ -296,8 +343,40 @@ describe("AdminPage", () => {
       target: { value: "---" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Desa el nom d'usuari" }));
-    expect(screen.getByRole("alert").textContent).toBe("Usuari ERP es obligatori.");
+    expect(screen.getByRole("alert").textContent).toBe("L'usuari ERP és obligatori.");
     expect(window.localStorage.getItem(OWNER_NAME_STORAGE_KEY)).toBe("Ada Lovelace");
+  });
+
+  it("cancels the profile edit when a name already exists", () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    render(<AdminPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Obre el menú de perfil" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Editar" }));
+    fireEvent.change(screen.getByLabelText("Usuari ERP"), {
+      target: { value: "Grace Hopper" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel·la" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(window.localStorage.getItem(OWNER_NAME_STORAGE_KEY)).toBe("Ada Lovelace");
+  });
+
+  it("does not allow cancelling the first owner name prompt", () => {
+    render(<AdminPage />);
+
+    expect(screen.queryByRole("button", { name: "Cancel·la" })).toBeNull();
+  });
+
+  it("closes the profile menu when clicking outside", () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    render(<AdminPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Obre el menú de perfil" }));
+    expect(screen.getByRole("menu")).not.toBeNull();
+    fireEvent.pointerDown(document.body);
+
+    expect(screen.queryByRole("menu")).toBeNull();
   });
 
   it("renders the existing logout action in the profile menu", () => {
