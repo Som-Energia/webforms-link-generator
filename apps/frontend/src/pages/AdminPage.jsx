@@ -11,15 +11,21 @@ import { OwnerNameModal } from "../owner/OwnerNameModal";
 import { normalizeOwner, readOwnerName, saveOwnerName } from "../owner/owner";
 import { CopyButton } from "../ui/CopyButton";
 import { HelpModal } from "../help/HelpModal";
+import {
+  LEAD_TAG_PARAM,
+  readLeadTagSettings,
+  saveLeadTagSettings,
+} from "../campaign/leadTag";
 import { version } from "../../package.json";
 
 export const DEFAULT_FORM_URL =
   "https://www.somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic";
 
-export function createPersonalLink(formUrl, owner) {
+export function createPersonalLink(formUrl, owner, leadTag = "") {
   try {
     const url = new URL(formUrl.trim() || DEFAULT_FORM_URL);
-    url.searchParams.set("owner", owner);
+    if (owner) url.searchParams.set("owner", owner);
+    if (leadTag) url.searchParams.set(LEAD_TAG_PARAM, leadTag);
     return url.toString();
   } catch {
     return "";
@@ -58,6 +64,9 @@ export function AdminPage() {
   const [formUrl, setFormUrl] = useState("");
   const [isFormUrlTouched, setIsFormUrlTouched] = useState(false);
   const [includesOwner, setIncludesOwner] = useState(true);
+  const [leadTagSettings, setLeadTagSettings] = useState(readLeadTagSettings);
+  const leadTagInputRef = useRef(null);
+  const shouldFocusLeadTag = useRef(false);
   const [theme, setTheme] = useState(resolveInitialTheme);
   const [ownerName, setOwnerName] = useState(readOwnerName);
   const [isEditingOwner, setIsEditingOwner] = useState(
@@ -74,10 +83,25 @@ export function AdminPage() {
   const isFormUrlValid = isValidFormUrl(formUrl);
   const showFormUrlError =
     !isFormUrlValid && (isFormUrlTouched || !isTypingHttpsPrefix(formUrl));
+  const linkOwner = includesOwner && owner ? owner : undefined;
+  const leadTag = leadTagSettings.isEnabled
+    ? leadTagSettings.tag.trim() || undefined
+    : undefined;
   const personalLink =
-    includesOwner && owner && isFormUrlValid
-      ? createPersonalLink(formUrl, owner)
+    isFormUrlValid && (linkOwner || leadTag)
+      ? createPersonalLink(formUrl, linkOwner, leadTag)
       : "";
+
+  useEffect(() => {
+    saveLeadTagSettings(leadTagSettings);
+  }, [leadTagSettings]);
+
+  useEffect(() => {
+    if (leadTagSettings.isEnabled && shouldFocusLeadTag.current) {
+      shouldFocusLeadTag.current = false;
+      leadTagInputRef.current?.focus();
+    }
+  }, [leadTagSettings.isEnabled]);
 
   useEffect(() => {
     if (isProfileMenuOpen) {
@@ -301,6 +325,77 @@ export function AdminPage() {
           ) : null}
         </div>
 
+        <div className="lead-tag-field">
+          <div className="owner-toggle-row">
+            <label className="switch">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={leadTagSettings.isEnabled}
+                onChange={(event) => {
+                  const isEnabled = event.target.checked;
+                  shouldFocusLeadTag.current = isEnabled;
+                  setLeadTagSettings((settings) => ({ ...settings, isEnabled }));
+                }}
+              />
+              <span className="switch-track" aria-hidden="true">
+                <span className="switch-thumb" />
+              </span>
+              <span className="switch-label">Afegir etiqueta de campanya</span>
+            </label>
+            {leadTag ? (
+              <span className="field-hint">
+                Afegeix <code>{LEAD_TAG_PARAM}={leadTag}</code> a tots els
+                enllaços.
+              </span>
+            ) : null}
+          </div>
+          {leadTagSettings.isEnabled ? (
+            <div className="form-url-field">
+              <label htmlFor="lead-tag">Etiqueta de campanya</label>
+              <div className="text-input">
+                <svg className="text-input-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 4a1 1 0 0 1 1-1h7.2a2 2 0 0 1 1.4.6l8.2 8.2a2 2 0 0 1 0 2.8l-6.4 6.4a2 2 0 0 1-2.8 0L3.6 12.8A2 2 0 0 1 3 11.4V4Zm2 1v6.4l8 8L19.4 13l-8-8H5Zm3.5 1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z" />
+                </svg>
+                <input
+                  ref={leadTagInputRef}
+                  id="lead-tag"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={leadTagSettings.tag}
+                  aria-describedby="lead-tag-hint"
+                  onChange={(event) => {
+                    const tag = event.target.value;
+                    setLeadTagSettings((settings) => ({ ...settings, tag }));
+                  }}
+                  placeholder="Per exemple: fira-girona-2026"
+                />
+                {leadTagSettings.tag ? (
+                  <button
+                    type="button"
+                    className="text-input-clear"
+                    aria-label="Esborra l'etiqueta"
+                    title="Esborra l'etiqueta"
+                    onClick={() => {
+                      setLeadTagSettings((settings) => ({ ...settings, tag: "" }));
+                      leadTagInputRef.current?.focus();
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z" />
+                    </svg>
+                  </button>
+                ) : null}
+              </div>
+              <p id="lead-tag-hint" className="field-hint" aria-live="polite">
+                {leadTag
+                  ? "S'afegirà a tots els enllaços, també als que ja has generat."
+                  : "Escriu l'etiqueta que identifica la campanya a l'ERP."}
+              </p>
+            </div>
+          ) : null}
+        </div>
+
         <div className="personal-link-section">
           {personalLink ? (
             <>
@@ -337,7 +432,8 @@ export function AdminPage() {
           generateLink={() =>
             generateSocialTariffLink(includesOwner ? owner : undefined, formUrl)
           }
-          owner={includesOwner ? owner : undefined}
+          owner={linkOwner}
+          leadTag={leadTag}
           expiryMinutes={30}
           disabled={!isFormUrlValid}
         />
@@ -356,7 +452,8 @@ export function AdminPage() {
               formUrl,
             )
           }
-          owner={includesOwner ? owner : undefined}
+          owner={linkOwner}
+          leadTag={leadTag}
           expiryMinutes={30}
           disabled={!isFormUrlValid}
         />

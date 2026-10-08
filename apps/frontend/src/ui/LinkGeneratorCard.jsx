@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { CopyButton } from "./CopyButton";
+import { LEAD_TAG_PARAM } from "../campaign/leadTag";
 
 export function formatExpiryDuration(expiryMinutes) {
   const days = Math.floor(expiryMinutes / 1440);
@@ -40,15 +41,16 @@ function isSafeLink(url) {
   }
 }
 
-export function updateLinkOwner(link, owner) {
+export function updateLinkParam(link, name, value) {
   try {
     const url = new URL(link);
     if (!isSafeLink(link)) return link;
+    if (!value && !url.searchParams.has(name)) return link;
 
-    if (owner) {
-      url.searchParams.set("owner", owner);
+    if (value) {
+      url.searchParams.set(name, value);
     } else {
-      url.searchParams.delete("owner");
+      url.searchParams.delete(name);
     }
 
     return url.toString();
@@ -57,13 +59,19 @@ export function updateLinkOwner(link, owner) {
   }
 }
 
-export function LinkGeneratorCard({ title, description, generateLink, owner, expiryMinutes, disabled = false }) {
+export function updateLinkOwner(link, owner) {
+  return updateLinkParam(link, "owner", owner);
+}
+
+export function LinkGeneratorCard({ title, description, generateLink, owner, leadTag, expiryMinutes, disabled = false }) {
   const [isLoading, setIsLoading] = useState(false);
   const [link, setLink] = useState(null);
   const [error, setError] = useState(null);
   const [expiresAt, setExpiresAt] = useState(null);
   const [remainingSeconds, setRemainingSeconds] = useState(null);
   const isMounted = useRef(true);
+  const latestLeadTag = useRef(leadTag);
+  latestLeadTag.current = leadTag;
 
   useEffect(() => {
     isMounted.current = true;
@@ -95,6 +103,10 @@ export function LinkGeneratorCard({ title, description, generateLink, owner, exp
     setLink((currentLink) => (currentLink ? updateLinkOwner(currentLink, owner) : currentLink));
   }, [owner]);
 
+  useEffect(() => {
+    setLink((currentLink) => (currentLink ? updateLinkParam(currentLink, LEAD_TAG_PARAM, leadTag) : currentLink));
+  }, [leadTag]);
+
   async function handleGenerate() {
     setIsLoading(true);
     setLink(null);
@@ -106,7 +118,7 @@ export function LinkGeneratorCard({ title, description, generateLink, owner, exp
       const generatedLink = await generateLink();
       if (!isMounted.current) return;
 
-      setLink(generatedLink);
+      setLink(updateLinkParam(generatedLink, LEAD_TAG_PARAM, latestLeadTag.current));
 
       if (expiryMinutes) {
         setExpiresAt(Date.now() + expiryMinutes * 60 * 1000);

@@ -98,6 +98,14 @@ export function HelpModal({ onClose }) {
                 vulguis que la contractació consti com a teva.
               </li>
               <li>
+                <strong>Si l'enllaç és per a una campanya, afegeix-hi
+                l'etiqueta.</strong> Activa <em>Afegir etiqueta de campanya</em>{" "}
+                i escriu l'etiqueta que t'hagin indicat. Així, a l'ERP es podrà
+                saber de quina campanya ve cada contractació. L'etiqueta queda
+                guardada per a la propera vegada; recorda desactivar-la quan la
+                campanya s'acabi.
+              </li>
+              <li>
                 <strong>Copia l'enllaç i envia'l.</strong> Fes clic al botó de
                 copiar que hi ha al costat de cada enllaç i enganxa'l en un
                 correu, un missatge o on el necessitis.

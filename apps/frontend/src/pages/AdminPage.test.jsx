@@ -14,6 +14,7 @@ import {
 import { version } from "../../package.json";
 import { AdminPage, DEFAULT_FORM_URL, FORM_URL_ERROR } from "./AdminPage";
 import { OWNER_NAME_STORAGE_KEY } from "../owner/owner";
+import { LEAD_TAG_STORAGE_KEY } from "../campaign/leadTag";
 
 vi.mock("../api/links", () => ({
   generateSendSignatureLink: vi.fn(),
@@ -377,6 +378,85 @@ describe("AdminPage", () => {
     fireEvent.pointerDown(document.body);
 
     expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("adds the campaign lead_tag to the personal link exactly as typed", () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    render(<AdminPage />);
+
+    expect(screen.queryByLabelText("Etiqueta de campanya")).toBeNull();
+    fireEvent.click(screen.getByRole("switch", { name: "Afegir etiqueta de campanya" }));
+
+    const leadTagInput = screen.getByLabelText("Etiqueta de campanya");
+    expect(document.activeElement).toBe(leadTagInput);
+    fireEvent.change(leadTagInput, { target: { value: " Fira Girona 2026 " } });
+
+    expect(
+      screen.getByRole("link", {
+        name: `${DEFAULT_FORM_URL}&owner=ada-lovelace&lead_tag=Fira+Girona+2026`,
+      }),
+    ).not.toBeNull();
+    expect(screen.getByText("lead_tag=Fira Girona 2026")).not.toBeNull();
+  });
+
+  it("shows a personal link with only lead_tag when the owner toggle is off", () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    window.localStorage.setItem(
+      LEAD_TAG_STORAGE_KEY,
+      JSON.stringify({ isEnabled: true, tag: "campanya-tardor" }),
+    );
+    render(<AdminPage />);
+
+    fireEvent.click(screen.getByRole("switch", { name: "Afegir el meu usuari" }));
+
+    expect(
+      screen.getByRole("link", { name: `${DEFAULT_FORM_URL}&lead_tag=campanya-tardor` }),
+    ).not.toBeNull();
+  });
+
+  it("remembers the lead tag toggle and value between visits", () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    const { unmount } = render(<AdminPage />);
+
+    fireEvent.click(screen.getByRole("switch", { name: "Afegir etiqueta de campanya" }));
+    fireEvent.change(screen.getByLabelText("Etiqueta de campanya"), {
+      target: { value: "campanya-tardor" },
+    });
+    unmount();
+    render(<AdminPage />);
+
+    expect(screen.getByRole("switch", { name: "Afegir etiqueta de campanya" }).checked).toBe(true);
+    expect(screen.getByLabelText("Etiqueta de campanya").value).toBe("campanya-tardor");
+  });
+
+  it("adds and updates lead_tag on generated links", async () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    window.localStorage.setItem(
+      LEAD_TAG_STORAGE_KEY,
+      JSON.stringify({ isEnabled: true, tag: "campanya-tardor" }),
+    );
+    generateSocialTariffLink.mockResolvedValue(
+      "https://forms.example.test/alta?token=jwt-token&owner=ada-lovelace",
+    );
+    render(<AdminPage />);
+
+    const socialTariffCard = screen
+      .getByRole("heading", { name: "Tarifa social" })
+      .closest("article");
+    fireEvent.click(within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }));
+
+    expect(generateSocialTariffLink).toHaveBeenCalledWith("ada-lovelace", "");
+    await within(socialTariffCard).findByRole("link", {
+      name: "https://forms.example.test/alta?token=jwt-token&owner=ada-lovelace&lead_tag=campanya-tardor",
+    });
+
+    fireEvent.click(screen.getByRole("switch", { name: "Afegir etiqueta de campanya" }));
+
+    expect(
+      within(socialTariffCard).getByRole("link", {
+        name: "https://forms.example.test/alta?token=jwt-token&owner=ada-lovelace",
+      }),
+    ).not.toBeNull();
   });
 
   it("opens the help guide from the header and closes it with Escape", () => {

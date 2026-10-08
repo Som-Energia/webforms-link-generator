@@ -637,6 +637,11 @@ code {
   gap: var(--space-2) var(--space-4);
 }
 
+.lead-tag-field {
+  display: grid;
+  gap: var(--space-3);
+}
+
 .personal-link-section {
   display: grid;
   gap: var(--space-2);
