@@ -93,6 +93,10 @@ def _required_env(name: str) -> str:
     return value
 
 
+def _jwt_api_endpoint(api_url: str) -> str:
+    return f"{api_url.rstrip('/')}/feature-flags/token"
+
+
 def _loggable_api_url(value: str) -> str:
     try:
         parsed = urlsplit(value)
@@ -136,7 +140,7 @@ def create_app() -> Flask:
             raise RuntimeError("SESSION_SECRET must be at least 32 characters.")
 
         admin_gateway_secret = _required_env("ADMIN_GATEWAY_SECRET")
-        jwt_api_url = _required_env("JWT_API_URL")
+        jwt_api_endpoint = _jwt_api_endpoint(_required_env("API_URL"))
     except RuntimeError:
         logger.error("operation=startup outcome=config_validation_failed")
         raise
@@ -246,11 +250,11 @@ def create_app() -> Flask:
         upstream_started_at = time.perf_counter()
         logger.info(
             "operation=jwt_api outcome=request_started target=%s",
-            _loggable_api_url(jwt_api_url),
+            _loggable_api_url(jwt_api_endpoint),
         )
         try:
             response = requests.post(
-                jwt_api_url,
+                jwt_api_endpoint,
                 headers={
                     "Content-Type": "application/json",
                     "Accept": "application/json",

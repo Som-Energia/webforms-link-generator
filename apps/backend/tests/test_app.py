@@ -13,7 +13,7 @@ REQUIRED_ENV = {
     "ADMIN_PASSWORD": "secret",
     "SESSION_SECRET": "x" * 32,
     "ADMIN_GATEWAY_SECRET": "gateway-secret",
-    "JWT_API_URL": "https://jwt.example.test/token",
+    "API_URL": "https://jwt.example.test/admin/api",
     "COOKIE_SECURE": "false",
 }
 OWNER = "ada-lovelace"
@@ -130,7 +130,7 @@ def test_social_tariff_generates_link(client, monkeypatch):
     assert response.json == {
         "link": "https://www.somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic&token=jwt-token&owner=ada-lovelace"
     }
-    assert calls[0][0] == ("https://jwt.example.test/token",)
+    assert calls[0][0] == ("https://jwt.example.test/admin/api/feature-flags/token",)
     assert calls[0][1]["json"] == {"ff": ["socialTariffByPass"]}
     assert calls[0][1]["headers"]["X-Admin-Gateway-Token"] == "gateway-secret"
 
@@ -176,8 +176,8 @@ def test_send_signature_generates_link(client, monkeypatch):
     assert response.json == {
         "link": "https://www.somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic&token=jwt-token&owner=ada-lovelace"
     }
-    assert calls[0][0] == ("https://jwt.example.test/token",)
-    assert calls[0][1]["json"] == {"ff": ["sendSignature"]}
+    assert calls[0][0] == ("https://jwt.example.test/admin/api/feature-flags/token",)
+    assert calls[0][1]["json"] == {"ff": ["sendSignaturit"]}
     assert calls[0][1]["headers"]["X-Admin-Gateway-Token"] == "gateway-secret"
 
 
@@ -204,7 +204,7 @@ def test_link_generation_logs_success_without_sensitive_request_or_response_data
     assert "private-query=must-not-appear" not in output
     assert "jwt-that-must-not-appear" not in output
     assert "gateway-secret" not in output
-    assert "operation=jwt_api outcome=request_started target=https://jwt.example.test/token" in output
+    assert "operation=jwt_api outcome=request_started target=https://jwt.example.test/admin/api/feature-flags/token" in output
 
 
 def test_loggable_api_url_excludes_credentials_query_and_fragment():
@@ -215,10 +215,10 @@ def test_loggable_api_url_excludes_credentials_query_and_fragment():
     assert _loggable_api_url(url) == "https://jwt.example.test:8443/token"
 
 
-def test_malformed_jwt_api_url_does_not_interrupt_the_upstream_error_path(monkeypatch):
+def test_malformed_api_url_does_not_interrupt_the_upstream_error_path(monkeypatch):
     for key, value in REQUIRED_ENV.items():
         monkeypatch.setenv(key, value)
-    monkeypatch.setenv("JWT_API_URL", "https://[::1")
+    monkeypatch.setenv("API_URL", "https://[::1")
 
     main = importlib.import_module("app.main")
     flask_app = main.create_app()
@@ -240,7 +240,20 @@ def test_malformed_jwt_api_url_does_not_interrupt_the_upstream_error_path(monkey
         "message": "No s'ha pogut generar l'enllaç.",
         "detail": "Error de connexió amb l'API JWT: RequestException.",
     }
-    assert calls[0][0] == ("https://[::1",)
+    assert calls[0][0] == ("https://[::1/feature-flags/token",)
+
+
+@pytest.mark.parametrize(
+    ("api_url", "expected_endpoint"),
+    [
+        ("https://jwt.example.test/admin/api", "https://jwt.example.test/admin/api/feature-flags/token"),
+        ("https://jwt.example.test/admin/api/", "https://jwt.example.test/admin/api/feature-flags/token"),
+    ],
+)
+def test_jwt_api_endpoint_appends_the_fixed_path(api_url, expected_endpoint):
+    from app.main import _jwt_api_endpoint
+
+    assert _jwt_api_endpoint(api_url) == expected_endpoint
 
 
 def test_social_tariff_uses_custom_form_url(client, monkeypatch):
