@@ -1,9 +1,9 @@
 import logging
 import os
-import re
 import secrets
 import sys
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import quote, unquote_plus, urlsplit, urlunsplit
 
@@ -17,7 +17,6 @@ from dotenv import load_dotenv
 COOKIE_NAME = "admin_session"
 SESSION_MAX_AGE = 60 * 60 * 8
 DEFAULT_FORM_URL = "https://www.somenergia.coop/ca/formulari-contractacio-periodes"
-OWNER_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 LOGGER_NAME = "webforms_links_generator"
 
 
@@ -60,28 +59,40 @@ def _custom_form_url(value: object) -> str | None:
     return value
 
 
-def _link_with_token(form_url: str, token: str, owner: str | None) -> str:
+def _expires_at(value: object) -> str:
+    if not isinstance(value, str):
+        raise ValueError
+
+    try:
+        expires_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError from error
+
+    if expires_at.tzinfo is None or expires_at.utcoffset() is None:
+        raise ValueError
+
+    if expires_at <= datetime.now(UTC):
+        raise ValueError
+
+    return expires_at.astimezone(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def _link_with_token(form_url: str, token: str) -> str:
     parsed = urlsplit(form_url)
     query_parts = parsed.query.split("&") if parsed.query else []
     updated_query = []
-    replacements = {"token": quote(token, safe="")}
-    if owner is not None:
-        replacements["owner"] = quote(owner, safe="")
-    added = set()
+    token_added = False
 
     for part in query_parts:
         parameter_name = unquote_plus(part.partition("=")[0])
-        if parameter_name == "owner" and owner is None:
-            continue
-        if parameter_name not in replacements:
+        if parameter_name != "token":
             updated_query.append(part)
-        elif parameter_name not in added:
-            updated_query.append(f"{parameter_name}={replacements[parameter_name]}")
-            added.add(parameter_name)
+        elif not token_added:
+            updated_query.append(f"token={quote(token, safe='')}")
+            token_added = True
 
-    for parameter_name, value in replacements.items():
-        if parameter_name not in added:
-            updated_query.append(f"{parameter_name}={value}")
+    if not token_added:
+        updated_query.append(f"token={quote(token, safe='')}")
 
     return urlunsplit(parsed._replace(query="&".join(updated_query)))
 
@@ -227,14 +238,6 @@ def create_app() -> Flask:
             return jsonify({"message": "Unauthorized"}), 401
 
         payload = request.get_json(silent=True) or {}
-        owner = payload.get("owner")
-        if "owner" in payload and (not isinstance(owner, str) or not OWNER_PATTERN.fullmatch(owner)):
-            logger.warning(
-                "operation=link_generation type=%s outcome=rejected status=400 duration_ms=%d",
-                link_type,
-                (time.perf_counter() - started_at) * 1000,
-            )
-            return jsonify({"message": "A valid owner is required."}), 400
 
         try:
             form_url = _custom_form_url(payload.get("formUrl"))
@@ -245,6 +248,18 @@ def create_app() -> Flask:
                 (time.perf_counter() - started_at) * 1000,
             )
             return jsonify({"message": "L'URL del formulari ha de ser una URL HTTPS vàlida."}), 400
+
+        expires_at = None
+        if "expiresAt" in payload:
+            try:
+                expires_at = _expires_at(payload["expiresAt"])
+            except ValueError:
+                logger.warning(
+                    "operation=link_generation type=%s outcome=rejected status=400 duration_ms=%d",
+                    link_type,
+                    (time.perf_counter() - started_at) * 1000,
+                )
+                return jsonify({"message": "expiresAt must be a future, timezone-aware ISO-8601 timestamp."}), 400
 
         logger.info("operation=link_generation type=%s outcome=accepted", link_type)
         upstream_started_at = time.perf_counter()
@@ -260,7 +275,7 @@ def create_app() -> Flask:
                     "Accept": "application/json",
                     "X-Admin-Gateway-Token": admin_gateway_secret,
                 },
-                json={"ff": [feature_flag]},
+                json={"ff": [feature_flag], **({"expiresAt": expires_at} if expires_at else {})},
                 timeout=10,
             )
         except requests.RequestException as error:
@@ -328,14 +343,14 @@ def create_app() -> Flask:
                 link_type,
                 (time.perf_counter() - started_at) * 1000,
             )
-            return jsonify({"link": _link_with_token(form_url, token, owner)})
+            return jsonify({"link": _link_with_token(form_url, token)})
 
         logger.info(
             "operation=link_generation type=%s outcome=succeeded status=200 duration_ms=%d",
             link_type,
             (time.perf_counter() - started_at) * 1000,
         )
-        return jsonify({"link": _link_with_token(f"{DEFAULT_FORM_URL}?form_type=domestic", token, owner)})
+        return jsonify({"link": _link_with_token(f"{DEFAULT_FORM_URL}?form_type=domestic", token)})
 
     @app.post("/api/links/social-tariff")
     def social_tariff_link() -> object:
