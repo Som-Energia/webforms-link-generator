@@ -93,6 +93,19 @@ def _required_env(name: str) -> str:
     return value
 
 
+def _loggable_api_url(value: str) -> str:
+    try:
+        parsed = urlsplit(value)
+        host = parsed.hostname or ""
+        if ":" in host:
+            host = f"[{host}]"
+        port = f":{parsed.port}" if parsed.port is not None else ""
+    except (TypeError, ValueError):
+        return "<invalid-url>"
+
+    return f"{parsed.scheme}://{host}{port}{parsed.path or '/'}"
+
+
 def _env_bool(name: str, default: bool) -> bool:
     value = os.environ.get(name)
     if value is None:
@@ -231,6 +244,10 @@ def create_app() -> Flask:
 
         logger.info("operation=link_generation type=%s outcome=accepted", link_type)
         upstream_started_at = time.perf_counter()
+        logger.info(
+            "operation=jwt_api outcome=request_started target=%s",
+            _loggable_api_url(jwt_api_url),
+        )
         try:
             response = requests.post(
                 jwt_api_url,
@@ -322,7 +339,7 @@ def create_app() -> Flask:
 
     @app.post("/api/links/send-signature")
     def send_signature_link() -> object:
-        return generate_link("sendSignature", "send_signature")
+        return generate_link("sendSignaturit", "send_signature")
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(error: Exception) -> object:

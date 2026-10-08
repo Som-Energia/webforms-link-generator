@@ -204,7 +204,43 @@ def test_link_generation_logs_success_without_sensitive_request_or_response_data
     assert "private-query=must-not-appear" not in output
     assert "jwt-that-must-not-appear" not in output
     assert "gateway-secret" not in output
-    assert "https://jwt.example.test/token" not in output
+    assert "operation=jwt_api outcome=request_started target=https://jwt.example.test/token" in output
+
+
+def test_loggable_api_url_excludes_credentials_query_and_fragment():
+    from app.main import _loggable_api_url
+
+    url = "https://user:password@jwt.example.test:8443/token?api_key=secret#fragment"
+
+    assert _loggable_api_url(url) == "https://jwt.example.test:8443/token"
+
+
+def test_malformed_jwt_api_url_does_not_interrupt_the_upstream_error_path(monkeypatch):
+    for key, value in REQUIRED_ENV.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("JWT_API_URL", "https://[::1")
+
+    main = importlib.import_module("app.main")
+    flask_app = main.create_app()
+    flask_app.config.update(TESTING=True)
+    calls = []
+
+    def fake_post(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise main.requests.RequestException()
+
+    monkeypatch.setattr(main.requests, "post", fake_post)
+    test_client = flask_app.test_client()
+    login(test_client)
+
+    response = test_client.post("/api/links/social-tariff", json={"owner": OWNER})
+
+    assert response.status_code == 502
+    assert response.json == {
+        "message": "No s'ha pogut generar l'enllaç.",
+        "detail": "Error de connexió amb l'API JWT: RequestException.",
+    }
+    assert calls[0][0] == ("https://[::1",)
 
 
 def test_social_tariff_uses_custom_form_url(client, monkeypatch):
