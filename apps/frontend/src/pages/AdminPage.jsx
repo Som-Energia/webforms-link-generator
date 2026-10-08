@@ -459,7 +459,7 @@ export function AdminPage() {
           title="Enviament de signatura"
           description={
             <>
-              Genera un enllaç amb <code>sendSignature</code> activat. Al resum
+              Genera un enllaç amb <code>sendSignaturit</code> activat. Al resum
               del formulari es mostra un botó per habilitar l'enviament de la
               signatura per correu electrònic.
             </>
