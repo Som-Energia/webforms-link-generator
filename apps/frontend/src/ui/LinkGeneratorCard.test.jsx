@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { formatCountdown, formatExpiryDuration, LinkGeneratorCard } from "./LinkGeneratorCard";
 
@@ -37,7 +37,7 @@ describe("LinkGeneratorCard", () => {
           title="Tarifa social"
           description="Genera un enllaç."
           generateLink={generateLink}
-          expiryMinutes={10080}
+          expiryOptions={["7days"]}
         />
       </StrictMode>,
     );
@@ -79,7 +79,7 @@ describe("LinkGeneratorCard", () => {
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(generatedUrl);
     });
-    expect(screen.getByRole("status").textContent).toBe("Copiat");
+    expect(screen.getByText("Copiat").getAttribute("role")).toBe("status");
   });
 
   it("renders an unsafe API response URL as text rather than an actionable link", async () => {
@@ -121,4 +121,67 @@ describe("LinkGeneratorCard", () => {
       expect(screen.getByRole("button", { name: "Genera l'enllaç" }).disabled).toBe(false);
     },
   );
+
+  it("lets the user pick one expiry option and sends its exact expiry date", async () => {
+    const generateLink = vi.fn().mockResolvedValue("https://example.test/generated-link");
+    render(
+      <LinkGeneratorCard
+        title="Tarifa social"
+        description="Genera un enllaç."
+        generateLink={generateLink}
+        expiryOptions={["30min", "60min", "7days"]}
+      />,
+    );
+
+    const group = screen.getByRole("radiogroup", { name: "Caducitat de l'enllaç" });
+    const options = within(group).getAllByRole("radio");
+    expect(options.map((option) => option.checked)).toEqual([true, false, false]);
+    expect(screen.getByText("L'enllaç generat caduca al cap de 30 minuts.")).not.toBeNull();
+
+    fireEvent.click(within(group).getByRole("radio", { name: "7 dies" }));
+
+    expect(options.map((option) => option.checked)).toEqual([false, false, true]);
+    expect(screen.getByText("L'enllaç generat caduca al cap de 7 dies.")).not.toBeNull();
+
+    const requestedAt = Date.now();
+    fireEvent.click(screen.getByRole("button", { name: "Genera l'enllaç" }));
+
+    await screen.findByRole("link", { name: "https://example.test/generated-link" });
+    const sentExpiresAt = Date.parse(generateLink.mock.calls[0][0]);
+    expect(sentExpiresAt - requestedAt).toBeGreaterThanOrEqual(10080 * 60 * 1000);
+    expect(sentExpiresAt - requestedAt).toBeLessThan(10080 * 60 * 1000 + 1000);
+    expect(screen.getByText("L'enllaç caduca en 7 dies 00 h 00 min 00 s.")).not.toBeNull();
+  });
+
+  it.each([
+    [undefined, "30 minuts", undefined],
+    [[], "30 minuts", undefined],
+    [["60min"], "1 hora", 60],
+  ])("hides the selector for options %j and uses %s", async (expiryOptions, label, expectedMinutes) => {
+    const generateLink = vi.fn().mockResolvedValue("https://example.test/generated-link");
+    render(
+      <LinkGeneratorCard
+        title="Tarifa social"
+        description="Genera un enllaç."
+        generateLink={generateLink}
+        expiryOptions={expiryOptions}
+      />,
+    );
+
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+    expect(screen.getByText(`L'enllaç generat caduca al cap de ${label}.`)).not.toBeNull();
+
+    const requestedAt = Date.now();
+    fireEvent.click(screen.getByRole("button", { name: "Genera l'enllaç" }));
+    await screen.findByRole("link", { name: "https://example.test/generated-link" });
+
+    const [sentExpiresAt] = generateLink.mock.calls[0];
+    if (expectedMinutes === undefined) {
+      expect(sentExpiresAt).toBeUndefined();
+    } else {
+      const delta = Date.parse(sentExpiresAt) - requestedAt;
+      expect(delta).toBeGreaterThanOrEqual(expectedMinutes * 60 * 1000);
+      expect(delta).toBeLessThan(expectedMinutes * 60 * 1000 + 1000);
+    }
+  });
 });

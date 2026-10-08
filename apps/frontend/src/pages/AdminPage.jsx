@@ -32,7 +32,6 @@ export function createPersonalLink(formUrl, owner, leadTag = "") {
   }
 }
 
-
 export const FORM_URL_ERROR =
   "Introdueix una URL HTTPS vàlida, per exemple https://www.somenergia.coop/…";
 
@@ -245,17 +244,23 @@ export function AdminPage() {
         <div className="panel-heading">
           <h1 id="form-url-title">Configura l'enllaç</h1>
           <p>
-            Tria el formulari de destí i si vols identificar-te als enllaços
-            que generis.
+            Tria el formulari de destí i si vols identificar-te als enllaços que
+            generis.
           </p>
         </div>
 
         <div className="form-url-field">
-          <label htmlFor="form-url">URL del formulari de destí (opcional)</label>
+          <label htmlFor="form-url">
+            URL del formulari de destí (opcional)
+          </label>
           <div
             className={`text-input${showFormUrlError ? " text-input--invalid" : ""}`}
           >
-            <svg className="text-input-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <svg
+              className="text-input-icon"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
               <path d="M10.6 13.4a1 1 0 0 1 0-1.4l3.5-3.5a1 1 0 1 1 1.4 1.4L12 13.4a1 1 0 0 1-1.4 0Zm-2.8 5.2a4 4 0 0 1-2.8-6.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a2 2 0 0 0 2.8 2.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a4 4 0 0 1-2.8 1.2Zm8-5a1 1 0 0 1-.7-1.7l2.1-2.1a2 2 0 0 0-2.8-2.8l-2.1 2.1a1 1 0 1 1-1.4-1.4l2.1-2.1a4 4 0 0 1 5.6 5.6l-2.1 2.1a1 1 0 0 1-.7.3Z" />
             </svg>
             <input
@@ -335,7 +340,10 @@ export function AdminPage() {
                 onChange={(event) => {
                   const isEnabled = event.target.checked;
                   shouldFocusLeadTag.current = isEnabled;
-                  setLeadTagSettings((settings) => ({ ...settings, isEnabled }));
+                  setLeadTagSettings((settings) => ({
+                    ...settings,
+                    isEnabled,
+                  }));
                 }}
               />
               <span className="switch-track" aria-hidden="true">
@@ -345,8 +353,11 @@ export function AdminPage() {
             </label>
             {leadTag ? (
               <span className="field-hint">
-                Afegeix <code>{LEAD_TAG_PARAM}={leadTag}</code> a tots els
-                enllaços.
+                Afegeix{" "}
+                <code>
+                  {LEAD_TAG_PARAM}={leadTag}
+                </code>{" "}
+                a tots els enllaços.
               </span>
             ) : null}
           </div>
@@ -354,7 +365,11 @@ export function AdminPage() {
             <div className="form-url-field">
               <label htmlFor="lead-tag">Etiqueta de campanya</label>
               <div className="text-input">
-                <svg className="text-input-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <svg
+                  className="text-input-icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
                   <path d="M3 4a1 1 0 0 1 1-1h7.2a2 2 0 0 1 1.4.6l8.2 8.2a2 2 0 0 1 0 2.8l-6.4 6.4a2 2 0 0 1-2.8 0L3.6 12.8A2 2 0 0 1 3 11.4V4Zm2 1v6.4l8 8L19.4 13l-8-8H5Zm3.5 1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z" />
                 </svg>
                 <input
@@ -377,7 +392,10 @@ export function AdminPage() {
                     aria-label="Esborra l'etiqueta"
                     title="Esborra l'etiqueta"
                     onClick={() => {
-                      setLeadTagSettings((settings) => ({ ...settings, tag: "" }));
+                      setLeadTagSettings((settings) => ({
+                        ...settings,
+                        tag: "",
+                      }));
                       leadTagInputRef.current?.focus();
                     }}
                   >
@@ -429,12 +447,12 @@ export function AdminPage() {
               amb tarifa social.
             </>
           }
-          generateLink={() =>
-            generateSocialTariffLink(includesOwner ? owner : undefined, formUrl)
+          generateLink={(expiresAt) =>
+            generateSocialTariffLink(formUrl, expiresAt)
           }
+          expiryOptions={["30min", "60min"]}
           owner={linkOwner}
           leadTag={leadTag}
-          expiryMinutes={30}
           disabled={!isFormUrlValid}
         />
         <LinkGeneratorCard
@@ -446,15 +464,12 @@ export function AdminPage() {
               signatura per correu electrònic.
             </>
           }
-          generateLink={() =>
-            generateSendSignatureLink(
-              includesOwner ? owner : undefined,
-              formUrl,
-            )
+          generateLink={(expiresAt) =>
+            generateSendSignatureLink(formUrl, expiresAt)
           }
+          expiryOptions={["30min", "1h", "7days", "30days"]}
           owner={linkOwner}
           leadTag={leadTag}
-          expiryMinutes={30}
           disabled={!isFormUrlValid}
         />
       </section>

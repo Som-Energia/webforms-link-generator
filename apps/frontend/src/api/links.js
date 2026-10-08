@@ -22,7 +22,7 @@ function safeDiagnostic(details) {
     .slice(0, 500);
 }
 
-async function generateFeatureFlagLink(path, owner, formUrl = "") {
+async function generateFeatureFlagLink(path, formUrl = "", expiresAt) {
   const customFormUrl = validateFormUrl(formUrl);
   let response;
 
@@ -30,7 +30,10 @@ async function generateFeatureFlagLink(path, owner, formUrl = "") {
     response = await fetch(path, {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ ...(owner ? { owner } : {}), ...(customFormUrl ? { formUrl: customFormUrl } : {}) }),
+      body: JSON.stringify({
+        ...(customFormUrl ? { formUrl: customFormUrl } : {}),
+        ...(expiresAt ? { expiresAt } : {}),
+      }),
     });
   } catch (error) {
     throw errorWithDetails(
@@ -65,10 +68,10 @@ async function generateFeatureFlagLink(path, owner, formUrl = "") {
   return data.link;
 }
 
-export async function generateSocialTariffLink(owner, formUrl = "") {
-  return generateFeatureFlagLink("/api/links/social-tariff", owner, formUrl);
+export async function generateSocialTariffLink(formUrl = "", expiresAt) {
+  return generateFeatureFlagLink("/api/links/social-tariff", formUrl, expiresAt);
 }
 
-export async function generateSendSignatureLink(owner, formUrl = "") {
-  return generateFeatureFlagLink("/api/links/send-signature", owner, formUrl);
+export async function generateSendSignatureLink(formUrl = "", expiresAt) {
+  return generateFeatureFlagLink("/api/links/send-signature", formUrl, expiresAt);
 }

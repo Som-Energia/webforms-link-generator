@@ -16,6 +16,8 @@ import { AdminPage, DEFAULT_FORM_URL, FORM_URL_ERROR } from "./AdminPage";
 import { OWNER_NAME_STORAGE_KEY } from "../owner/owner";
 import { LEAD_TAG_STORAGE_KEY } from "../campaign/leadTag";
 
+const ISO_DATE = expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+
 vi.mock("../api/links", () => ({
   generateSendSignatureLink: vi.fn(),
   generateSocialTariffLink: vi.fn(),
@@ -119,18 +121,18 @@ describe("AdminPage", () => {
     fireEvent.click(within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }));
 
     await waitFor(() => {
-      expect(generateSocialTariffLink).toHaveBeenCalledWith(undefined, "");
+      expect(generateSocialTariffLink).toHaveBeenCalledWith("", ISO_DATE);
     });
   });
 
-  it("updates every displayed generated link when the owner toggle changes", async () => {
+  it("adds owner to generated links and updates it when the owner toggle changes", async () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
-    const socialTariffUrl =
-      "https://forms.example.test/alta?token=social-token&owner=old-owner&owner=duplicate&uid=3300#step-2";
-    const sendSignatureUrl =
-      "https://forms.example.test/signatura?owner=old-owner&token=signature-token&source=email#final";
-    generateSocialTariffLink.mockResolvedValue(socialTariffUrl);
-    generateSendSignatureLink.mockResolvedValue(sendSignatureUrl);
+    generateSocialTariffLink.mockResolvedValue(
+      "https://forms.example.test/alta?token=social-token&uid=3300#step-2",
+    );
+    generateSendSignatureLink.mockResolvedValue(
+      "https://forms.example.test/signatura?owner=stale-owner&token=signature-token&source=email#final",
+    );
     render(<AdminPage />);
 
     const socialTariffCard = screen
@@ -142,24 +144,25 @@ describe("AdminPage", () => {
     fireEvent.click(within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }));
     fireEvent.click(within(sendSignatureCard).getByRole("button", { name: "Genera l'enllaç" }));
 
-    await screen.findByRole("link", { name: socialTariffUrl });
-    await screen.findByRole("link", { name: sendSignatureUrl });
-    fireEvent.click(screen.getByLabelText("Afegir el meu usuari"));
-
-    const socialTariffWithoutOwner =
-      "https://forms.example.test/alta?token=social-token&uid=3300#step-2";
-    const sendSignatureWithoutOwner =
-      "https://forms.example.test/signatura?token=signature-token&source=email#final";
-    await screen.findByRole("link", { name: socialTariffWithoutOwner });
-    await screen.findByRole("link", { name: sendSignatureWithoutOwner });
+    const socialTariffWithOwner =
+      "https://forms.example.test/alta?token=social-token&uid=3300&owner=ada-lovelace#step-2";
+    const sendSignatureWithOwner =
+      "https://forms.example.test/signatura?owner=ada-lovelace&token=signature-token&source=email#final";
+    await screen.findByRole("link", { name: socialTariffWithOwner });
+    await screen.findByRole("link", { name: sendSignatureWithOwner });
 
     fireEvent.click(screen.getByLabelText("Afegir el meu usuari"));
 
-    expect(
-      await screen.findByRole("link", {
-        name: "https://forms.example.test/alta?token=social-token&uid=3300&owner=ada-lovelace#step-2",
-      }),
-    ).not.toBeNull();
+    await screen.findByRole("link", {
+      name: "https://forms.example.test/alta?token=social-token&uid=3300#step-2",
+    });
+    await screen.findByRole("link", {
+      name: "https://forms.example.test/signatura?token=signature-token&source=email#final",
+    });
+
+    fireEvent.click(screen.getByLabelText("Afegir el meu usuari"));
+
+    expect(await screen.findByRole("link", { name: socialTariffWithOwner })).not.toBeNull();
     expect(
       await screen.findByRole("link", {
         name: "https://forms.example.test/signatura?token=signature-token&source=email&owner=ada-lovelace#final",
@@ -258,9 +261,9 @@ describe("AdminPage", () => {
     );
 
     await waitFor(() => {
-      expect(generateSocialTariffLink).toHaveBeenCalledWith("ada-lovelace", formUrl);
+      expect(generateSocialTariffLink).toHaveBeenCalledWith(formUrl, ISO_DATE);
     });
-    const generatedUrl = `${formUrl}&token=jwt-token`;
+    const generatedUrl = `${formUrl}&token=jwt-token&owner=ada-lovelace`;
     const generatedLink = within(socialTariffCard).getByRole("link", { name: generatedUrl });
     expect(generatedLink.getAttribute("href")).toBe(generatedUrl);
     expect(generatedLink.getAttribute("target")).toBe("_blank");
@@ -300,9 +303,9 @@ describe("AdminPage", () => {
     );
 
     await waitFor(() => {
-      expect(generateSendSignatureLink).toHaveBeenCalledWith("ada-lovelace", formUrl);
+      expect(generateSendSignatureLink).toHaveBeenCalledWith(formUrl, ISO_DATE);
     });
-    const generatedUrl = `${formUrl}&token=jwt-token`;
+    const generatedUrl = `${formUrl}&token=jwt-token&owner=ada-lovelace`;
     const generatedLink = within(sendSignatureCard).getByRole("link", { name: generatedUrl });
     expect(generatedLink.getAttribute("href")).toBe(generatedUrl);
     expect(generatedLink.getAttribute("target")).toBe("_blank");
@@ -435,9 +438,7 @@ describe("AdminPage", () => {
       LEAD_TAG_STORAGE_KEY,
       JSON.stringify({ isEnabled: true, tag: "campanya-tardor" }),
     );
-    generateSocialTariffLink.mockResolvedValue(
-      "https://forms.example.test/alta?token=jwt-token&owner=ada-lovelace",
-    );
+    generateSocialTariffLink.mockResolvedValue("https://forms.example.test/alta?token=jwt-token");
     render(<AdminPage />);
 
     const socialTariffCard = screen
@@ -445,7 +446,7 @@ describe("AdminPage", () => {
       .closest("article");
     fireEvent.click(within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }));
 
-    expect(generateSocialTariffLink).toHaveBeenCalledWith("ada-lovelace", "");
+    expect(generateSocialTariffLink).toHaveBeenCalledWith("", ISO_DATE);
     await within(socialTariffCard).findByRole("link", {
       name: "https://forms.example.test/alta?token=jwt-token&owner=ada-lovelace&lead_tag=campanya-tardor",
     });

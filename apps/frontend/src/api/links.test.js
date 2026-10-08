@@ -6,6 +6,21 @@ afterEach(() => {
 });
 
 describe("generateSocialTariffLink", () => {
+  it("sends expiresAt only when an expiry is chosen", async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({ link: "https://forms.example.test/alta?token=jwt" }),
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    await generateSocialTariffLink("", "2026-10-15T10:30:00.000Z");
+    await generateSocialTariffLink();
+
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ expiresAt: "2026-10-15T10:30:00.000Z" });
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({});
+  });
+
   it("rejects when the API returns a non-JSON response", async () => {
     vi.stubGlobal(
       "fetch",
@@ -16,7 +31,7 @@ describe("generateSocialTariffLink", () => {
       }),
     );
 
-    await expect(generateSocialTariffLink("ada-lovelace")).rejects.toThrow(
+    await expect(generateSocialTariffLink()).rejects.toThrow(
       "No s'ha pogut generar l'enllaç. Detalls tècnics: Resposta no JSON (HTTP 502).",
     );
   });
@@ -24,7 +39,7 @@ describe("generateSocialTariffLink", () => {
   it("rejects when the network request fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
 
-    await expect(generateSocialTariffLink("ada-lovelace")).rejects.toThrow(
+    await expect(generateSocialTariffLink()).rejects.toThrow(
       "No s'ha pogut generar l'enllaç. Detalls tècnics: Failed to fetch",
     );
   });
@@ -32,8 +47,8 @@ describe("generateSocialTariffLink", () => {
   it("redacts credential-like values from network diagnostics", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Request failed: token=secret-token")));
 
-    await expect(generateSocialTariffLink("ada-lovelace")).rejects.toThrow("token=[redacted]");
-    await expect(generateSocialTariffLink("ada-lovelace")).rejects.not.toThrow("secret-token");
+    await expect(generateSocialTariffLink()).rejects.toThrow("token=[redacted]");
+    await expect(generateSocialTariffLink()).rejects.not.toThrow("secret-token");
   });
 
   it("includes a safe API diagnostic without exposing the response body", async () => {
@@ -50,7 +65,7 @@ describe("generateSocialTariffLink", () => {
       }),
     );
 
-    await expect(generateSocialTariffLink("ada-lovelace")).rejects.toThrow(
+    await expect(generateSocialTariffLink()).rejects.toThrow(
       "L'API externa no pot generar el token. Detalls tècnics: L'API JWT ha retornat HTTP 503.",
     );
   });
@@ -64,22 +79,22 @@ describe("generateSocialTariffLink", () => {
     });
     vi.stubGlobal("fetch", fetch);
 
-    await expect(generateSocialTariffLink("ada-lovelace", formUrl)).resolves.toBe(`${formUrl}&token=jwt-token`);
+    await expect(generateSocialTariffLink(formUrl)).resolves.toBe(`${formUrl}&token=jwt-token`);
     expect(fetch).toHaveBeenCalledWith("/api/links/social-tariff", {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ owner: "ada-lovelace", formUrl }),
+      body: JSON.stringify({ formUrl }),
     });
   });
 
-  it("omits owner from the API request when it is disabled", async () => {
+  it("never sends owner to the API", async () => {
     const fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({ link: "https://forms.example.test/alta?token=jwt-token" }),
     });
     vi.stubGlobal("fetch", fetch);
 
-    await expect(generateSocialTariffLink(undefined)).resolves.toBe(
+    await expect(generateSocialTariffLink()).resolves.toBe(
       "https://forms.example.test/alta?token=jwt-token",
     );
     expect(fetch).toHaveBeenCalledWith("/api/links/social-tariff", {
@@ -96,7 +111,7 @@ describe("generateSocialTariffLink", () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
 
-    await expect(generateSocialTariffLink("ada-lovelace", formUrl)).rejects.toThrow(
+    await expect(generateSocialTariffLink(formUrl)).rejects.toThrow(
       "L'URL del formulari ha de ser una URL HTTPS vàlida.",
     );
     expect(fetch).not.toHaveBeenCalled();
@@ -113,11 +128,11 @@ describe("generateSendSignatureLink", () => {
     });
     vi.stubGlobal("fetch", fetch);
 
-    await expect(generateSendSignatureLink("ada-lovelace", formUrl)).resolves.toBe(`${formUrl}&token=jwt-token`);
+    await expect(generateSendSignatureLink(formUrl)).resolves.toBe(`${formUrl}&token=jwt-token`);
     expect(fetch).toHaveBeenCalledWith("/api/links/send-signature", {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ owner: "ada-lovelace", formUrl }),
+      body: JSON.stringify({ formUrl }),
     });
   });
 });

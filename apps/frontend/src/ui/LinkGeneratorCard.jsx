@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CopyButton } from "./CopyButton";
 import { LEAD_TAG_PARAM } from "../campaign/leadTag";
+import { DEFAULT_EXPIRY_MINUTES, formatExpiryLabel, resolveExpiryOptions } from "./expiry";
 
 export function formatExpiryDuration(expiryMinutes) {
   const days = Math.floor(expiryMinutes / 1440);
@@ -63,15 +64,22 @@ export function updateLinkOwner(link, owner) {
   return updateLinkParam(link, "owner", owner);
 }
 
-export function LinkGeneratorCard({ title, description, generateLink, owner, leadTag, expiryMinutes, disabled = false }) {
+export function LinkGeneratorCard({ title, description, generateLink, owner, leadTag, expiryOptions, disabled = false }) {
+  const expiryChoices = resolveExpiryOptions(expiryOptions);
+  const hasExpiryChoice = expiryChoices.length > 0;
+  const [selectedExpiry, setSelectedExpiry] = useState(expiryChoices[0] ?? DEFAULT_EXPIRY_MINUTES);
+  const expiryMinutes = expiryChoices.includes(selectedExpiry)
+    ? selectedExpiry
+    : (expiryChoices[0] ?? DEFAULT_EXPIRY_MINUTES);
+  const expiryGroupId = useId();
   const [isLoading, setIsLoading] = useState(false);
   const [link, setLink] = useState(null);
   const [error, setError] = useState(null);
   const [expiresAt, setExpiresAt] = useState(null);
   const [remainingSeconds, setRemainingSeconds] = useState(null);
   const isMounted = useRef(true);
-  const latestLeadTag = useRef(leadTag);
-  latestLeadTag.current = leadTag;
+  const latestLinkParams = useRef({ owner, leadTag });
+  latestLinkParams.current = { owner, leadTag };
 
   useEffect(() => {
     isMounted.current = true;
@@ -115,15 +123,17 @@ export function LinkGeneratorCard({ title, description, generateLink, owner, lea
     setRemainingSeconds(null);
 
     try {
-      const generatedLink = await generateLink();
+      const linkExpiresAt = Date.now() + expiryMinutes * 60 * 1000;
+      const generatedLink = await generateLink(
+        hasExpiryChoice ? new Date(linkExpiresAt).toISOString() : undefined,
+      );
       if (!isMounted.current) return;
 
-      setLink(updateLinkParam(generatedLink, LEAD_TAG_PARAM, latestLeadTag.current));
+      const { owner: currentOwner, leadTag: currentLeadTag } = latestLinkParams.current;
+      setLink(updateLinkParam(updateLinkOwner(generatedLink, currentOwner), LEAD_TAG_PARAM, currentLeadTag));
 
-      if (expiryMinutes) {
-        setExpiresAt(Date.now() + expiryMinutes * 60 * 1000);
-        setRemainingSeconds(expiryMinutes * 60);
-      }
+      setExpiresAt(linkExpiresAt);
+      setRemainingSeconds(Math.max(0, Math.ceil((linkExpiresAt - Date.now()) / 1000)));
     } catch (error) {
       if (!isMounted.current) return;
 
@@ -154,20 +164,37 @@ export function LinkGeneratorCard({ title, description, generateLink, owner, lea
           {isLoading ? "S'està generant..." : "Genera l'enllaç"}
         </button>
 
-        {expiryMinutes ? (
-          <p
-            className={`expiry-notice${isExpired ? " expiry-notice--expired" : countdown ? " expiry-notice--active" : ""}`}
-            role="status"
-            aria-live="polite"
-          >
-            {isExpired
-              ? "L'enllaç ha expirat."
-              : countdown
-                ? `L'enllaç caduca en ${countdown}.`
-                : `L'enllaç generat caduca al cap de ${formatExpiryDuration(expiryMinutes)}.`}
-          </p>
+        {expiryChoices.length > 1 ? (
+          <div className="segmented-control" role="radiogroup" aria-label="Caducitat de l'enllaç">
+            {expiryChoices.map((minutes) => (
+              <label key={minutes} className="segmented-option">
+                <input
+                  type="radio"
+                  name={expiryGroupId}
+                  value={minutes}
+                  checked={minutes === expiryMinutes}
+                  disabled={isLoading}
+                  onChange={() => setSelectedExpiry(minutes)}
+                />
+                <span aria-hidden="true">{formatExpiryLabel(minutes)}</span>
+                <span className="visually-hidden">{formatExpiryDuration(minutes)}</span>
+              </label>
+            ))}
+          </div>
         ) : null}
       </div>
+
+      <p
+        className={`expiry-notice${isExpired ? " expiry-notice--expired" : countdown ? " expiry-notice--active" : ""}`}
+        role="status"
+        aria-live="polite"
+      >
+        {isExpired
+          ? "L'enllaç ha expirat."
+          : countdown
+            ? `L'enllaç caduca en ${countdown}.`
+            : `L'enllaç generat caduca al cap de ${formatExpiryDuration(expiryMinutes)}.`}
+      </p>
 
       {error ? (
         <div className="result-error" role="alert">
