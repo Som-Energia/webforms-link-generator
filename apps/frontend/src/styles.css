@@ -487,7 +487,8 @@ code {
   gap: var(--space-2);
 }
 
-.theme-toggle {
+.theme-toggle,
+.icon-button {
   display: grid;
   width: 2.5rem;
   height: 2.5rem;
@@ -500,11 +501,13 @@ code {
   transition: border-color var(--transition);
 }
 
-.theme-toggle:hover {
+.theme-toggle:hover,
+.icon-button:hover {
   border-color: var(--text);
 }
 
-.theme-toggle svg {
+.theme-toggle svg,
+.icon-button svg {
   width: 1.25rem;
   height: 1.25rem;
   fill: currentcolor;
@@ -844,6 +847,161 @@ a.url-link:hover {
   margin-top: var(--space-4);
 }
 
+/* Help modal: always white, as requested, so it reads like a printed guide in both themes. */
+.help-modal {
+  color-scheme: light;
+  --text: #0b2e34;
+  --text-muted: #3d5a5f;
+  --surface-card: #f0f3ec;
+  --surface-muted: #e2e8de;
+  --primary: #cdff80;
+  --primary-hover: #b6e471;
+  --focus-ring: #0b2e34;
+
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 52rem);
+  max-height: min(90vh, 60rem);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  background: #ffffff;
+  box-shadow: var(--shadow-lg);
+  animation: pop-in 180ms ease-out;
+}
+
+.help-modal-header,
+.help-modal-footer {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: var(--space-6) var(--space-8);
+}
+
+.help-modal-header {
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-bottom: 1px solid #ced5d0;
+}
+
+.help-modal-header h1 {
+  font-size: 1.75rem;
+}
+
+.help-modal-close {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--text);
+  border-radius: var(--radius-pill);
+  padding: 0;
+  color: var(--text);
+  background: transparent;
+}
+
+.help-modal-close:hover {
+  color: #ffffff;
+  background: var(--text);
+}
+
+.help-modal-close svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  fill: currentcolor;
+}
+
+.help-modal-body {
+  display: grid;
+  gap: var(--space-8);
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-8);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+.help-modal-body h2 {
+  margin-bottom: var(--space-3);
+  font-size: 1.375rem;
+}
+
+.help-modal-body p {
+  margin: 0 0 var(--space-3);
+}
+
+.help-modal-body p:last-child {
+  margin-bottom: 0;
+}
+
+.help-steps {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: help-step;
+}
+
+.help-steps li {
+  position: relative;
+  padding-left: 3rem;
+  counter-increment: help-step;
+}
+
+.help-steps li::before {
+  content: counter(help-step);
+  position: absolute;
+  top: -0.1rem;
+  left: 0;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text);
+  background: var(--primary);
+  font-weight: 500;
+}
+
+.help-link-types {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--space-4);
+}
+
+.help-link-type {
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  background: var(--surface-muted);
+  font-size: 0.9375rem;
+}
+
+.help-link-type h3 {
+  margin: 0 0 var(--space-1);
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.help-link-type .help-link-type-when {
+  font-weight: 500;
+}
+
+.help-tips {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.help-tips li::marker {
+  color: #97d700;
+}
+
+.help-modal-footer {
+  justify-content: flex-end;
+  border-top: 1px solid #ced5d0;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -890,6 +1048,21 @@ a.url-link:hover {
   .generator-card,
   .owner-name-modal {
     padding: var(--space-5);
+  }
+
+  .help-modal-header,
+  .help-modal-body,
+  .help-modal-footer {
+    padding-right: var(--space-5);
+    padding-left: var(--space-5);
+  }
+
+  .help-modal-header h1 {
+    font-size: 1.375rem;
+  }
+
+  .help-modal-footer .primary-button {
+    flex: 1;
   }
 
   .generator-actions .primary-button,

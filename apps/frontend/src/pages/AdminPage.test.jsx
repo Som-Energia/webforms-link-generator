@@ -379,6 +379,36 @@ describe("AdminPage", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
+  it("opens the help guide from the header and closes it with Escape", () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    render(<AdminPage />);
+
+    const helpButton = screen.getByRole("button", { name: "Ajuda: com funciona aquesta eina" });
+    fireEvent.click(helpButton);
+
+    const dialog = screen.getByRole("dialog", { name: "Com funciona el generador d'enllaços" });
+    expect(within(dialog).getByRole("heading", { name: "Quin enllaç he de fer servir?" })).not.toBeNull();
+    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Tanca l'ajuda" }));
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(helpButton);
+  });
+
+  it("closes the help guide with its buttons", () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    render(<AdminPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Ajuda: com funciona aquesta eina" }));
+    fireEvent.click(screen.getByRole("button", { name: "Entesos" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ajuda: com funciona aquesta eina" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tanca l'ajuda" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("renders the existing logout action in the profile menu", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);

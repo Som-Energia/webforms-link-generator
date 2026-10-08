@@ -10,6 +10,7 @@ import { resolveInitialTheme } from "../theme/theme";
 import { OwnerNameModal } from "../owner/OwnerNameModal";
 import { normalizeOwner, readOwnerName, saveOwnerName } from "../owner/owner";
 import { CopyButton } from "../ui/CopyButton";
+import { HelpModal } from "../help/HelpModal";
 import { version } from "../../package.json";
 
 export const DEFAULT_FORM_URL =
@@ -63,6 +64,8 @@ export function AdminPage() {
     () => !normalizeOwner(ownerName),
   );
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const helpButtonRef = useRef(null);
   const profileControlRef = useRef(null);
   const profileMenuButtonRef = useRef(null);
   const editProfileButtonRef = useRef(null);
@@ -105,6 +108,11 @@ export function AdminPage() {
     setIsEditingOwner(false);
   }
 
+  function handleCloseHelp() {
+    setIsHelpOpen(false);
+    helpButtonRef.current?.focus();
+  }
+
   function handleClearFormUrl() {
     setFormUrl("");
     setIsFormUrlTouched(false);
@@ -143,6 +151,19 @@ export function AdminPage() {
           </data>
         </div>
         <div className="admin-actions">
+          <button
+            ref={helpButtonRef}
+            type="button"
+            className="icon-button"
+            aria-label="Ajuda: com funciona aquesta eina"
+            aria-haspopup="dialog"
+            title="Ajuda"
+            onClick={() => setIsHelpOpen(true)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm-1-5h2v2h-2v-2Zm1-9a3.5 3.5 0 0 0-3.5 3.5h2a1.5 1.5 0 1 1 2.2 1.3c-.9.5-1.7 1.3-1.7 2.7v.5h2v-.5c0-.6.3-.9.8-1.2A3.5 3.5 0 0 0 12 6Z" />
+            </svg>
+          </button>
           <ThemeToggle changeTheme={handleChangeTheme} />
           <div className="profile-control" ref={profileControlRef}>
             <svg
@@ -340,6 +361,7 @@ export function AdminPage() {
           disabled={!isFormUrlValid}
         />
       </section>
+      {isHelpOpen ? <HelpModal onClose={handleCloseHelp} /> : null}
       {isEditingOwner ? (
         <OwnerNameModal
           initialName={ownerName}
