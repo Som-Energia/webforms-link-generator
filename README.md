@@ -20,15 +20,17 @@ Single-container monorepo for an admin-only link generator.
 
 ### Setup
 
-From the repository root, create the local environment file and install dependencies:
+From the repository root, create the local environment files and install dependencies. If you use pyenv, first select an installed Python 3.12 patch release (`3.12.12` below is an example; the project does not pin a patch version):
 
 ```bash
+pyenv local 3.12.12 # If using pyenv; replace with your installed 3.12 patch version.
 cp .env.example .env
-cd apps/backend && poetry install
-cd apps/frontend && npm install
+cp apps/backend/.env.example apps/backend/.env
+(cd apps/backend && poetry install)
+(cd apps/frontend && npm install)
 ```
 
-Set these values in `.env` before starting the backend:
+Set these values in `apps/backend/.env` before starting the local backend:
 
 | Variable               | Required value                                                     |
 | ---------------------- | ------------------------------------------------------------------ |
@@ -38,7 +40,7 @@ Set these values in `.env` before starting the backend:
 | `API_URL`              | Reachable external API base URL; the backend adds `/feature-flags/token`. |
 | `COOKIE_SECURE`        | Set to `false` for local HTTP; leave `true` for HTTPS deployments. |
 
-`PORT` defaults to `3000`; the Make backend target explicitly uses port `3000`. The backend loads the root `.env` file, and already-exported environment variables take precedence. Keep `.env` out of version control.
+`PORT` defaults to `3000`; the Make backend target explicitly uses port `3000`. The local Flask CLI loads `apps/backend/.env`; the application also loads the root `.env` without overriding variables already set. Already-exported environment variables take precedence. Keep both `.env` files out of version control.
 
 ### Start
 
@@ -72,7 +74,7 @@ Vite proxies browser requests beginning with `/api` and `/auth` to `http://local
 
 ### Troubleshooting and Limits
 
-- A startup error such as `Missing ADMIN_PASSWORD` means a required variable is absent or empty. Confirm that you exported the values from `.env`; `SESSION_SECRET` must also meet the 32-character minimum.
+- A startup error such as `Missing ADMIN_PASSWORD` means a required variable is absent or empty. Confirm that you configured the values in `apps/backend/.env`; `SESSION_SECRET` must also meet the 32-character minimum.
 - Login will not persist over `http://localhost:5173` if `COOKIE_SECURE=true`, because secure cookies require HTTPS. Set it to `false` only for local HTTP.
 - Opening the Flask root URL without a frontend build returns `503 Frontend build not found.` This is expected during `make dev`; use Vite at port `5173`. Build the frontend with `npm --prefix apps/frontend run build` when you need Flask to serve the UI.
 - Link generation depends on the external API. The backend always requests `<API_URL>/feature-flags/token`; an unreachable API, a non-success response, or an invalid token response produces a `502`. Confirm `API_URL` and `ADMIN_GATEWAY_SECRET`.
