@@ -20,25 +20,27 @@ Single-container monorepo for an admin-only link generator.
 
 ### Setup
 
-From the repository root, create the local environment file and install dependencies:
+From the repository root, create the local environment files and install dependencies. If you use pyenv, first select an installed Python 3.12 patch release (`3.12.12` below is an example; the project does not pin a patch version):
 
 ```bash
+pyenv local 3.12.12 # If using pyenv; replace with your installed 3.12 patch version.
 cp .env.example .env
-cd apps/backend && poetry install
-cd apps/frontend && npm install
+cp apps/backend/.env.example apps/backend/.env
+(cd apps/backend && poetry install)
+(cd apps/frontend && npm install)
 ```
 
-Set these values in `.env` before starting the backend:
+Set these values in `apps/backend/.env` before starting the local backend:
 
 | Variable               | Required value                                                     |
 | ---------------------- | ------------------------------------------------------------------ |
 | `ADMIN_PASSWORD`       | Password for the admin login.                                      |
 | `SESSION_SECRET`       | Secret of at least 32 characters.                                  |
 | `ADMIN_GATEWAY_SECRET` | Token sent to the JWT API as `X-Admin-Gateway-Token`.              |
-| `JWT_API_URL`          | Reachable external JWT API endpoint.                               |
+| `API_URL`              | Reachable external API base URL; the backend adds `/feature-flags/token`. |
 | `COOKIE_SECURE`        | Set to `false` for local HTTP; leave `true` for HTTPS deployments. |
 
-`PORT` defaults to `3000`; the Make backend target explicitly uses port `3000`. Before running the Make targets, export the values from `.env` in your shell; Flask does not load the root `.env` file automatically. Already-exported environment variables take precedence. Keep `.env` out of version control.
+`PORT` defaults to `3000`; the Make backend target explicitly uses port `3000`. The local Flask CLI loads `apps/backend/.env`; the application also loads the root `.env` without overriding variables already set. Already-exported environment variables take precedence. Keep both `.env` files out of version control.
 
 ### Start
 
@@ -72,10 +74,10 @@ Vite proxies browser requests beginning with `/api` and `/auth` to `http://local
 
 ### Troubleshooting and Limits
 
-- A startup error such as `Missing ADMIN_PASSWORD` means a required variable is absent or empty. Confirm that you exported the values from `.env`; `SESSION_SECRET` must also meet the 32-character minimum.
+- A startup error such as `Missing ADMIN_PASSWORD` means a required variable is absent or empty. Confirm that you configured the values in `apps/backend/.env`; `SESSION_SECRET` must also meet the 32-character minimum.
 - Login will not persist over `http://localhost:5173` if `COOKIE_SECURE=true`, because secure cookies require HTTPS. Set it to `false` only for local HTTP.
 - Opening the Flask root URL without a frontend build returns `503 Frontend build not found.` This is expected during `make dev`; use Vite at port `5173`. Build the frontend with `npm --prefix apps/frontend run build` when you need Flask to serve the UI.
-- Link generation depends on the external JWT API. An unreachable API, a non-success response, or an invalid token response produces a `502`; confirm `JWT_API_URL` and `ADMIN_GATEWAY_SECRET`.
+- Link generation depends on the external API. The backend always requests `<API_URL>/feature-flags/token`; an unreachable API, a non-success response, or an invalid token response produces a `502`. Confirm `API_URL` and `ADMIN_GATEWAY_SECRET`.
 - The backend request to the JWT API has a 10-second timeout.
 
 ## Release and Harbor Publishing
@@ -173,7 +175,7 @@ Portainer may also need registry credentials configured so it can pull from Harb
 
 Open the deployed stack in Portainer, select the `webforms-link-generator` service or its running task, then select **Logs**. Gunicorn access logs are written to stdout and Gunicorn, startup, authentication, link-generation, upstream, and unexpected-error application logs are written as human-readable text to stderr. Portainer shows both streams together.
 
-Application logs intentionally include only operational metadata such as operation, type, outcome, status, and duration. Gunicorn access logs also omit request paths and query strings. Neither log stream includes passwords, secrets, JWTs, cookies, authorization values, request bodies, upstream URLs, or generated links. This makes the logs suitable for operational visibility, but they cannot be used to reconstruct a user request or a generated link.
+Application logs intentionally include only operational metadata such as operation, type, outcome, status, duration, and the sanitized upstream endpoint. Gunicorn access logs also omit request paths and query strings. Neither log stream includes passwords, secrets, JWTs, cookies, authorization values, request bodies, upstream credentials, query strings, fragments, or generated links. This makes the logs suitable for operational visibility, but they cannot be used to reconstruct a user request or a generated link.
 
 ## Verification
 
