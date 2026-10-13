@@ -4,6 +4,27 @@
 
 Single-container monorepo for an admin-only link generator.
 
+## Table of Contents
+
+- [Structure](#structure)
+- [Local Development](#local-development)
+  - [Prerequisites](#prerequisites)
+  - [Setup](#setup)
+  - [Start](#start)
+  - [Local URLs and Proxy](#local-urls-and-proxy)
+  - [Troubleshooting and Limits](#troubleshooting-and-limits)
+- [Run Locally with Docker](#run-locally-with-docker)
+  - [Configure and Start](#configure-and-start)
+  - [Health and Logs](#health-and-logs)
+  - [Stop and Remove](#stop-and-remove)
+- [Release and Harbor Publishing](#release-and-harbor-publishing)
+  - [Quick Path](#quick-path)
+  - [Shared Version](#shared-version)
+  - [Harbor Publishing Details](#harbor-publishing-details)
+- [Portainer](#portainer)
+  - [Logs](#logs)
+- [Verification](#verification)
+
 ## Structure
 
 - `apps/backend`: Flask API, authentication, and production static serving.
@@ -32,13 +53,13 @@ cp apps/backend/.env.example apps/backend/.env
 
 Set these values in `apps/backend/.env` before starting the local backend:
 
-| Variable               | Required value                                                     |
-| ---------------------- | ------------------------------------------------------------------ |
-| `ADMIN_PASSWORD`       | Password for the admin login.                                      |
-| `SESSION_SECRET`       | Secret of at least 32 characters.                                  |
-| `ADMIN_GATEWAY_SECRET` | Token sent to the JWT API as `X-Admin-Gateway-Token`.              |
+| Variable               | Required value                                                            |
+| ---------------------- | ------------------------------------------------------------------------- |
+| `ADMIN_PASSWORD`       | Password for the admin login.                                             |
+| `SESSION_SECRET`       | Secret of at least 32 characters.                                         |
+| `ADMIN_GATEWAY_SECRET` | Token sent to the JWT API as `X-Admin-Gateway-Token`.                     |
 | `API_URL`              | Reachable external API base URL; the backend adds `/feature-flags/token`. |
-| `COOKIE_SECURE`        | Set to `false` for local HTTP; leave `true` for HTTPS deployments. |
+| `COOKIE_SECURE`        | Set to `false` for local HTTP; leave `true` for HTTPS deployments.        |
 
 `PORT` defaults to `3000`; the Make backend target explicitly uses port `3000`. The local Flask CLI loads `apps/backend/.env`; the application also loads the root `.env` without overriding variables already set. Already-exported environment variables take precedence. Keep both `.env` files out of version control.
 
