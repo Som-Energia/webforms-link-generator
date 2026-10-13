@@ -6,3 +6,6 @@ apps/frontend/node_modules
 apps/frontend/dist
 __pycache__
 *.pyc
+**/.env
+**/.env.*
+!**/.env.example
