@@ -80,6 +80,57 @@ Vite proxies browser requests beginning with `/api` and `/auth` to `http://local
 - Link generation depends on the external API. The backend always requests `<API_URL>/feature-flags/token`; an unreachable API, a non-success response, or an invalid token response produces a `502`. Confirm `API_URL` and `ADMIN_GATEWAY_SECRET`.
 - The backend request to the JWT API has a 10-second timeout.
 
+## Run Locally with Docker
+
+Run these commands from the repository root with Docker available. Ensure port `13000` and container name `webforms-local` are unused.
+
+### Configure and Start
+
+If you have not created the backend environment file during local setup, copy its template:
+
+```bash
+cp apps/backend/.env.example apps/backend/.env
+```
+
+Configure `apps/backend/.env` using the [Setup variable table](#setup): set an admin password, a `SESSION_SECRET` of at least 32 characters, a real `API_URL` reachable from the container, and the matching `ADMIN_GATEWAY_SECRET`. Link generation requires access to that API; placeholder credentials do not provide a working integration.
+
+The environment file stays outside the image: `.dockerignore` excludes it from the build context, and `--env-file` injects its values only at runtime. No credentials are needed for the image build.
+
+```bash
+docker build -t webforms:local .
+docker run -d --name webforms-local \
+  --env-file apps/backend/.env \
+  -e COOKIE_SECURE=false \
+  -e PORT=3000 \
+  -p 127.0.0.1:13000:3000 \
+  webforms:local
+docker logs webforms-local
+```
+
+The explicit `PORT=3000` keeps the container port consistent with the mapping even if the environment file sets another port. `COOKIE_SECURE=false` allows login cookies over local HTTP; use `true` for HTTPS deployments.
+
+Once startup completes, open **http://localhost:13000/** to log in and generate links. The container serves both the UI and backend.
+
+### Health and Logs
+
+```bash
+curl -i http://localhost:13000/health
+docker logs --follow webforms-local
+```
+
+The health endpoint should return `200` with JSON containing `"status": "ok"`. It confirms the app is running; successful link generation also requires the configured external API. Press `Ctrl+C` to stop following logs; the container keeps running.
+
+### Stop and Remove
+
+```bash
+docker stop --time 30 webforms-local
+docker logs webforms-local
+docker inspect --format 'exit={{.State.ExitCode}} oom={{.State.OOMKilled}}' webforms-local
+docker rm webforms-local
+```
+
+After a normal shutdown, inspection reports `exit=0 oom=false`. Exit `137` can indicate a forced kill after the stop timeout; check the logs and OOM flag.
+
 ## Release and Harbor Publishing
 
 Use `make version` to set one version for the backend and frontend, then use `scripts/publish-images.sh` to build and publish the image to the Harbor repository configured in `.env`.
@@ -179,8 +230,10 @@ Application logs intentionally include only operational metadata such as operati
 
 ## Verification
 
+Run these commands from the repository root:
+
 ```bash
-cd apps/backend && poetry run pytest
-cd apps/frontend && npm run build
+(cd apps/backend && poetry run pytest)
+npm --prefix apps/frontend run build
 docker compose build
 ```
