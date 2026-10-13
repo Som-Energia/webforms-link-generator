@@ -1,6 +1,7 @@
 import importlib
 import logging
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -13,11 +14,9 @@ REQUIRED_ENV = {
     "ADMIN_PASSWORD": "secret",
     "SESSION_SECRET": "x" * 32,
     "ADMIN_GATEWAY_SECRET": "gateway-secret",
-    "JWT_API_URL": "https://jwt.example.test/token",
+    "API_URL": "https://jwt.example.test/admin/api",
     "COOKIE_SECURE": "false",
 }
-
-
 @pytest.fixture()
 def log_messages():
     logger = logging.getLogger("webforms_links_generator")
@@ -74,6 +73,16 @@ def test_login_sets_admin_cookie(client):
     assert "Max-Age=28800" in cookie
 
 
+def test_logout_clears_admin_cookie(client):
+    login(client)
+
+    response = client.post("/auth/logout")
+
+    assert response.status_code == 303
+    assert response.headers["Location"] == "/"
+    assert "admin_session=;" in response.headers["Set-Cookie"]
+
+
 def test_authentication_logs_are_operational_and_do_not_expose_password(client, log_messages):
     secret_password = "password-that-must-not-appear"
 
@@ -113,15 +122,129 @@ def test_social_tariff_generates_link(client, monkeypatch):
     monkeypatch.setattr("app.main.requests.post", fake_post)
     login(client)
 
-    response = client.post("/api/links/social-tariff")
+    response = client.post("/api/links/social-tariff", json={"owner": "ignored-owner"})
 
     assert response.status_code == 200
     assert response.json == {
         "link": "https://www.somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic&token=jwt-token"
     }
-    assert calls[0][0] == ("https://jwt.example.test/token",)
+    assert calls[0][0] == ("https://jwt.example.test/admin/api/feature-flags/token",)
     assert calls[0][1]["json"] == {"ff": ["socialTariffByPass"]}
     assert calls[0][1]["headers"]["X-Admin-Gateway-Token"] == "gateway-secret"
+
+
+def test_social_tariff_reports_the_upstream_status_without_its_body(client, monkeypatch):
+    class FakeResponse:
+        ok = False
+        status_code = 503
+        text = "token=upstream-secret"
+
+    monkeypatch.setattr("app.main.requests.post", lambda *args, **kwargs: FakeResponse())
+    login(client)
+
+    response = client.post("/api/links/social-tariff")
+
+    assert response.status_code == 502
+    assert response.json == {
+        "message": "L'API externa no pot generar el token.",
+        "detail": "L'API JWT ha retornat HTTP 503.",
+    }
+
+
+def test_send_signature_generates_link(client, monkeypatch):
+    class FakeResponse:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"data": {"token": "jwt-token"}}
+
+    calls = []
+
+    def fake_post(*args, **kwargs):
+        calls.append((args, kwargs))
+        return FakeResponse()
+
+    monkeypatch.setattr("app.main.requests.post", fake_post)
+    login(client)
+
+    response = client.post("/api/links/send-signature", json={"owner": "ignored-owner"})
+
+    assert response.status_code == 200
+    assert response.json == {
+        "link": "https://www.somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic&token=jwt-token"
+    }
+    assert calls[0][0] == ("https://jwt.example.test/admin/api/feature-flags/token",)
+    assert calls[0][1]["json"] == {"ff": ["sendSignaturit"]}
+    assert calls[0][1]["headers"]["X-Admin-Gateway-Token"] == "gateway-secret"
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "feature_flag"),
+    [
+        ("/api/links/social-tariff", "socialTariffByPass"),
+        ("/api/links/send-signature", "sendSignaturit"),
+    ],
+)
+def test_link_generation_forwards_a_normalized_future_expiry(client, monkeypatch, endpoint, feature_flag):
+    class FakeResponse:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"data": {"token": "jwt-token"}}
+
+    calls = []
+
+    def fake_post(*args, **kwargs):
+        calls.append((args, kwargs))
+        return FakeResponse()
+
+    monkeypatch.setattr("app.main.requests.post", fake_post)
+    login(client)
+
+    response = client.post(endpoint, json={"expiresAt": "2099-01-02T03:04:05.6789+02:00"})
+
+    assert response.status_code == 200
+    assert calls[0][1]["json"] == {
+        "ff": [feature_flag],
+        "expiresAt": "2099-01-02T01:04:05.678Z",
+    }
+
+
+@pytest.mark.parametrize(
+    "expires_at",
+    [
+        None,
+        1,
+        "not-a-timestamp",
+        "2099-01-02",
+        "2099-01-02T03:04:05",
+        "2000-01-02T03:04:05Z",
+    ],
+)
+def test_link_generation_rejects_invalid_or_nonfuture_expiry_without_requesting_jwt(client, monkeypatch, expires_at):
+    monkeypatch.setattr("app.main.requests.post", pytest.fail)
+    login(client)
+
+    response = client.post("/api/links/social-tariff", json={"expiresAt": expires_at})
+
+    assert response.status_code == 400
+
+
+def test_link_generation_rejects_an_expiry_equal_to_the_current_time_without_requesting_jwt(client, monkeypatch):
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2099, 1, 2, 3, 4, 5, tzinfo=tz)
+
+    monkeypatch.setattr("app.main.datetime", FrozenDateTime)
+    monkeypatch.setattr("app.main.requests.post", pytest.fail)
+    login(client)
+
+    response = client.post("/api/links/social-tariff", json={"expiresAt": "2099-01-02T03:04:05Z"})
+
+    assert response.status_code == 400
 
 
 def test_link_generation_logs_success_without_sensitive_request_or_response_data(client, monkeypatch, log_messages):
@@ -133,10 +256,14 @@ def test_link_generation_logs_success_without_sensitive_request_or_response_data
             return {"data": {"token": "jwt-that-must-not-appear"}}
 
     custom_url = "https://forms.example.test/alta?private-query=must-not-appear"
+    expires_at = "2099-01-02T03:04:05.678Z"
     monkeypatch.setattr("app.main.requests.post", lambda *args, **kwargs: FakeResponse())
     login(client)
 
-    response = client.post("/api/links/social-tariff", json={"formUrl": custom_url})
+    response = client.post(
+        "/api/links/social-tariff",
+        json={"formUrl": custom_url, "expiresAt": expires_at},
+    )
 
     output = "\n".join(log_messages)
     assert response.status_code == 200
@@ -144,10 +271,60 @@ def test_link_generation_logs_success_without_sensitive_request_or_response_data
     assert "operation=jwt_api outcome=completed status=200 duration_ms=" in output
     assert "operation=link_generation type=social_tariff outcome=succeeded status=200 duration_ms=" in output
     assert custom_url not in output
+    assert expires_at not in output
     assert "private-query=must-not-appear" not in output
     assert "jwt-that-must-not-appear" not in output
     assert "gateway-secret" not in output
-    assert "https://jwt.example.test/token" not in output
+    assert "operation=jwt_api outcome=request_started target=https://jwt.example.test/admin/api/feature-flags/token" in output
+
+
+def test_loggable_api_url_excludes_credentials_query_and_fragment():
+    from app.main import _loggable_api_url
+
+    url = "https://user:password@jwt.example.test:8443/token?api_key=secret#fragment"
+
+    assert _loggable_api_url(url) == "https://jwt.example.test:8443/token"
+
+
+def test_malformed_api_url_does_not_interrupt_the_upstream_error_path(monkeypatch):
+    for key, value in REQUIRED_ENV.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("API_URL", "https://[::1")
+
+    main = importlib.import_module("app.main")
+    flask_app = main.create_app()
+    flask_app.config.update(TESTING=True)
+    calls = []
+
+    def fake_post(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise main.requests.RequestException()
+
+    monkeypatch.setattr(main.requests, "post", fake_post)
+    test_client = flask_app.test_client()
+    login(test_client)
+
+    response = test_client.post("/api/links/social-tariff")
+
+    assert response.status_code == 502
+    assert response.json == {
+        "message": "No s'ha pogut generar l'enllaç.",
+        "detail": "Error de connexió amb l'API JWT: RequestException.",
+    }
+    assert calls[0][0] == ("https://[::1/feature-flags/token",)
+
+
+@pytest.mark.parametrize(
+    ("api_url", "expected_endpoint"),
+    [
+        ("https://jwt.example.test/admin/api", "https://jwt.example.test/admin/api/feature-flags/token"),
+        ("https://jwt.example.test/admin/api/", "https://jwt.example.test/admin/api/feature-flags/token"),
+    ],
+)
+def test_jwt_api_endpoint_appends_the_fixed_path(api_url, expected_endpoint):
+    from app.main import _jwt_api_endpoint
+
+    assert _jwt_api_endpoint(api_url) == expected_endpoint
 
 
 def test_social_tariff_uses_custom_form_url(client, monkeypatch):
@@ -167,7 +344,8 @@ def test_social_tariff_uses_custom_form_url(client, monkeypatch):
             "formUrl": (
                 "https://www.somenergia.coop/es/formulario-contratacion-periodos?"
                 "form_type=enterprise&uid=3300"
-            )
+            ),
+            "owner": "ignored-owner",
         },
     )
 
@@ -191,7 +369,7 @@ def test_social_tariff_ignores_a_blank_custom_form_url(client, monkeypatch):
     monkeypatch.setattr("app.main.requests.post", lambda *args, **kwargs: FakeResponse())
     login(client)
 
-    response = client.post("/api/links/social-tariff", json={"formUrl": "   "})
+    response = client.post("/api/links/social-tariff", json={"formUrl": "   ", "owner": "ignored-owner"})
 
     assert response.status_code == 200
     assert response.json == {
@@ -212,7 +390,7 @@ def test_social_tariff_replaces_existing_tokens_in_custom_form_url(client, monke
 
     response = client.post(
         "/api/links/social-tariff",
-        json={"formUrl": "https://forms.example.test/alta?plan=solar&token=old&tag=a%2Bb&token=older"},
+        json={"formUrl": "https://forms.example.test/alta?plan=solar&token=old&tag=a%2Bb&token=older", "owner": "ignored-owner"},
     )
 
     assert response.status_code == 200
@@ -221,7 +399,7 @@ def test_social_tariff_replaces_existing_tokens_in_custom_form_url(client, monke
     }
 
 
-@pytest.mark.parametrize("form_url", ["not-a-url", "ftp://forms.example.test/alta", "https://"])
+@pytest.mark.parametrize("form_url", ["not-a-url", "ftp://forms.example.test/alta", "http://forms.example.test/alta", "https://"])
 def test_social_tariff_rejects_invalid_custom_form_url_without_requesting_jwt(client, monkeypatch, form_url):
     monkeypatch.setattr("app.main.requests.post", pytest.fail)
     login(client)
@@ -229,7 +407,49 @@ def test_social_tariff_rejects_invalid_custom_form_url_without_requesting_jwt(cl
     response = client.post("/api/links/social-tariff", json={"formUrl": form_url})
 
     assert response.status_code == 400
-    assert response.json == {"message": "L'URL del formulari ha de ser una URL HTTP o HTTPS vàlida."}
+    assert response.json == {"message": "L'URL del formulari ha de ser una URL HTTPS vàlida."}
+
+
+@pytest.mark.parametrize("owner", [None, "", "Ada Lovelace", "ada--lovelace", "ada-lovelace-"])
+def test_social_tariff_ignores_owner_payload(client, monkeypatch, owner):
+    class FakeResponse:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"data": {"token": "jwt-token"}}
+
+    monkeypatch.setattr("app.main.requests.post", lambda *args, **kwargs: FakeResponse())
+    login(client)
+
+    response = client.post("/api/links/social-tariff", json={"owner": owner})
+
+    assert response.status_code == 200
+    assert response.json == {
+        "link": "https://www.somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic&token=jwt-token"
+    }
+
+
+def test_social_tariff_preserves_owner_query_parameters_in_custom_form_url(client, monkeypatch):
+    class FakeResponse:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"data": {"token": "jwt-token"}}
+
+    monkeypatch.setattr("app.main.requests.post", lambda *args, **kwargs: FakeResponse())
+    login(client)
+
+    response = client.post(
+        "/api/links/social-tariff",
+        json={"formUrl": "https://forms.example.test/alta?plan=solar&owner=old&tag=vip&owner=older", "owner": "ignored-owner"},
+    )
+
+    assert response.status_code == 200
+    assert response.json == {
+        "link": "https://forms.example.test/alta?plan=solar&owner=old&tag=vip&owner=older&token=jwt-token"
+    }
 
 
 def test_social_tariff_logs_upstream_failure_without_request_data(client, monkeypatch, log_messages):

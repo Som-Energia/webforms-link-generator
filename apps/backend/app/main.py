@@ -3,6 +3,7 @@ import os
 import secrets
 import sys
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import quote, unquote_plus, urlsplit, urlunsplit
 
@@ -52,15 +53,32 @@ def _custom_form_url(value: object) -> str | None:
     except ValueError as error:
         raise ValueError from error
 
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+    if parsed.scheme != "https" or not parsed.hostname:
         raise ValueError
 
     return value
 
 
+def _expires_at(value: object) -> str:
+    if not isinstance(value, str):
+        raise ValueError
+
+    try:
+        expires_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError from error
+
+    if expires_at.tzinfo is None or expires_at.utcoffset() is None:
+        raise ValueError
+
+    if expires_at <= datetime.now(UTC):
+        raise ValueError
+
+    return expires_at.astimezone(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
 def _link_with_token(form_url: str, token: str) -> str:
     parsed = urlsplit(form_url)
-    encoded_token = quote(token, safe="")
     query_parts = parsed.query.split("&") if parsed.query else []
     updated_query = []
     token_added = False
@@ -70,11 +88,11 @@ def _link_with_token(form_url: str, token: str) -> str:
         if parameter_name != "token":
             updated_query.append(part)
         elif not token_added:
-            updated_query.append(f"token={encoded_token}")
+            updated_query.append(f"token={quote(token, safe='')}")
             token_added = True
 
     if not token_added:
-        updated_query.append(f"token={encoded_token}")
+        updated_query.append(f"token={quote(token, safe='')}")
 
     return urlunsplit(parsed._replace(query="&".join(updated_query)))
 
@@ -84,6 +102,23 @@ def _required_env(name: str) -> str:
     if not value:
         raise RuntimeError(f"Missing {name}.")
     return value
+
+
+def _jwt_api_endpoint(api_url: str) -> str:
+    return f"{api_url.rstrip('/')}/feature-flags/token"
+
+
+def _loggable_api_url(value: str) -> str:
+    try:
+        parsed = urlsplit(value)
+        host = parsed.hostname or ""
+        if ":" in host:
+            host = f"[{host}]"
+        port = f":{parsed.port}" if parsed.port is not None else ""
+    except (TypeError, ValueError):
+        return "<invalid-url>"
+
+    return f"{parsed.scheme}://{host}{port}{parsed.path or '/'}"
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -116,7 +151,7 @@ def create_app() -> Flask:
             raise RuntimeError("SESSION_SECRET must be at least 32 characters.")
 
         admin_gateway_secret = _required_env("ADMIN_GATEWAY_SECRET")
-        jwt_api_url = _required_env("JWT_API_URL")
+        jwt_api_endpoint = _jwt_api_endpoint(_required_env("API_URL"))
     except RuntimeError:
         logger.error("operation=startup outcome=config_validation_failed")
         raise
@@ -192,49 +227,73 @@ def create_app() -> Flask:
         )
         return response
 
-    @app.post("/api/links/social-tariff")
-    def social_tariff_link() -> object:
+    def generate_link(feature_flag: str, link_type: str) -> object:
         started_at = time.perf_counter()
         if not is_authenticated():
             logger.warning(
-                "operation=link_generation type=social_tariff outcome=rejected status=401 duration_ms=%d",
+                "operation=link_generation type=%s outcome=rejected status=401 duration_ms=%d",
+                link_type,
                 (time.perf_counter() - started_at) * 1000,
             )
             return jsonify({"message": "Unauthorized"}), 401
 
         payload = request.get_json(silent=True) or {}
+
         try:
             form_url = _custom_form_url(payload.get("formUrl"))
         except (AttributeError, ValueError):
             logger.warning(
-                "operation=link_generation type=social_tariff outcome=rejected status=400 duration_ms=%d",
+                "operation=link_generation type=%s outcome=rejected status=400 duration_ms=%d",
+                link_type,
                 (time.perf_counter() - started_at) * 1000,
             )
-            return jsonify({"message": "L'URL del formulari ha de ser una URL HTTP o HTTPS vàlida."}), 400
+            return jsonify({"message": "L'URL del formulari ha de ser una URL HTTPS vàlida."}), 400
 
-        logger.info("operation=link_generation type=social_tariff outcome=accepted")
+        expires_at = None
+        if "expiresAt" in payload:
+            try:
+                expires_at = _expires_at(payload["expiresAt"])
+            except ValueError:
+                logger.warning(
+                    "operation=link_generation type=%s outcome=rejected status=400 duration_ms=%d",
+                    link_type,
+                    (time.perf_counter() - started_at) * 1000,
+                )
+                return jsonify({"message": "expiresAt must be a future, timezone-aware ISO-8601 timestamp."}), 400
+
+        logger.info("operation=link_generation type=%s outcome=accepted", link_type)
         upstream_started_at = time.perf_counter()
+        logger.info(
+            "operation=jwt_api outcome=request_started target=%s",
+            _loggable_api_url(jwt_api_endpoint),
+        )
         try:
             response = requests.post(
-                jwt_api_url,
+                jwt_api_endpoint,
                 headers={
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                     "X-Admin-Gateway-Token": admin_gateway_secret,
                 },
-                json={"ff": ["socialTariffByPass"]},
+                json={"ff": [feature_flag], **({"expiresAt": expires_at} if expires_at else {})},
                 timeout=10,
             )
-        except requests.RequestException:
+        except requests.RequestException as error:
             logger.error(
                 "operation=jwt_api outcome=failed duration_ms=%d",
                 (time.perf_counter() - upstream_started_at) * 1000,
             )
             logger.error(
-                "operation=link_generation type=social_tariff outcome=failed status=502 duration_ms=%d",
+                "operation=link_generation type=%s outcome=failed status=502 duration_ms=%d",
+                link_type,
                 (time.perf_counter() - started_at) * 1000,
             )
-            return jsonify({"message": "No s'ha pogut generar l'enllaç."}), 502
+            return jsonify(
+                {
+                    "message": "No s'ha pogut generar l'enllaç.",
+                    "detail": f"Error de connexió amb l'API JWT: {type(error).__name__}.",
+                }
+            ), 502
 
         if not response.ok:
             logger.warning(
@@ -243,10 +302,16 @@ def create_app() -> Flask:
                 (time.perf_counter() - upstream_started_at) * 1000,
             )
             logger.error(
-                "operation=link_generation type=social_tariff outcome=failed status=502 duration_ms=%d",
+                "operation=link_generation type=%s outcome=failed status=502 duration_ms=%d",
+                link_type,
                 (time.perf_counter() - started_at) * 1000,
             )
-            return jsonify({"message": "L'API externa no pot generar el token."}), 502
+            return jsonify(
+                {
+                    "message": "L'API externa no pot generar el token.",
+                    "detail": f"L'API JWT ha retornat HTTP {response.status_code}.",
+                }
+            ), 502
 
         logger.info(
             "operation=jwt_api outcome=completed status=%d duration_ms=%d",
@@ -258,30 +323,42 @@ def create_app() -> Flask:
             token = response.json()["data"]["token"]
         except (ValueError, KeyError, TypeError):
             logger.error(
-                "operation=link_generation type=social_tariff outcome=failed status=502 duration_ms=%d",
+                "operation=link_generation type=%s outcome=failed status=502 duration_ms=%d",
+                link_type,
                 (time.perf_counter() - started_at) * 1000,
             )
             return jsonify({"message": "L'API externa no ha retornat un JWT vàlid."}), 502
 
         if not isinstance(token, str) or not token:
             logger.error(
-                "operation=link_generation type=social_tariff outcome=failed status=502 duration_ms=%d",
+                "operation=link_generation type=%s outcome=failed status=502 duration_ms=%d",
+                link_type,
                 (time.perf_counter() - started_at) * 1000,
             )
             return jsonify({"message": "L'API externa no ha retornat un JWT vàlid."}), 502
 
         if form_url:
             logger.info(
-                "operation=link_generation type=social_tariff outcome=succeeded status=200 duration_ms=%d",
+                "operation=link_generation type=%s outcome=succeeded status=200 duration_ms=%d",
+                link_type,
                 (time.perf_counter() - started_at) * 1000,
             )
             return jsonify({"link": _link_with_token(form_url, token)})
 
         logger.info(
-            "operation=link_generation type=social_tariff outcome=succeeded status=200 duration_ms=%d",
+            "operation=link_generation type=%s outcome=succeeded status=200 duration_ms=%d",
+            link_type,
             (time.perf_counter() - started_at) * 1000,
         )
-        return jsonify({"link": f"{DEFAULT_FORM_URL}?form_type=domestic&token={token}"})
+        return jsonify({"link": _link_with_token(f"{DEFAULT_FORM_URL}?form_type=domestic", token)})
+
+    @app.post("/api/links/social-tariff")
+    def social_tariff_link() -> object:
+        return generate_link("socialTariffByPass", "social_tariff")
+
+    @app.post("/api/links/send-signature")
+    def send_signature_link() -> object:
+        return generate_link("sendSignaturit", "send_signature")
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(error: Exception) -> object:
