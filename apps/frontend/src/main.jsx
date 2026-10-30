@@ -2,6 +2,8 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { initializeTheme } from "./theme/theme";
+import "@somenergia/tokens/fonts.css";
+import "@somenergia/tokens/tokens.css";
 import "./styles.css";
 
 initializeTheme();
