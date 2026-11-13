@@ -1,5 +1,14 @@
 # Change Log
 
+## Unreleased
+
+- NEW: Add the “Enllaç de sòcia activista” card for sponsored contract links, with selectable expiration periods of 1, 7, or 30 days.
+- NEW: Generate sponsor tokens through `/sponsored-contract/token` using predefined `vat=F81129827` and `code=SociaActivista` values; keep sponsor inputs hidden until editing is supported.
+- NEW: Add `tt=sponsor` to sponsor links and `tt=featureFlag` to social-tariff and signature-email links, preserving destination URLs, owner attribution, and campaign tags.
+- IMP: Display generator cards in two columns on desktop and one column on mobile.
+- DOC: Extend in-app help with activist-sponsored links, predefined sponsor data, and accurate expiration options for all generator cards.
+- TEST: Cover sponsor authentication, fixed upstream payloads, expiration validation, custom destinations, hidden fields, token-type query parameters, and updated help content.
+
 ## 0.2.0 2026-10-13
 
 - NEW: Add authenticated signature-email link generation, sharing feature-flag request handling with the social-tariff generator.
