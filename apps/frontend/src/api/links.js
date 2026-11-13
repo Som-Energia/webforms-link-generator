@@ -72,6 +72,10 @@ export async function generateSocialTariffLink(formUrl = "", expiresAt) {
   return generateFeatureFlagLink("/api/links/social-tariff", formUrl, expiresAt);
 }
 
+export async function generateSponsorLink(formUrl = "", expiresAt) {
+  return generateFeatureFlagLink("/api/links/sponsor", formUrl, expiresAt);
+}
+
 export async function generateSendSignatureLink(formUrl = "", expiresAt) {
   return generateFeatureFlagLink("/api/links/send-signature", formUrl, expiresAt);
 }

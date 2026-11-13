@@ -151,7 +151,9 @@ def create_app() -> Flask:
             raise RuntimeError("SESSION_SECRET must be at least 32 characters.")
 
         admin_gateway_secret = _required_env("ADMIN_GATEWAY_SECRET")
-        jwt_api_endpoint = _jwt_api_endpoint(_required_env("API_URL"))
+        api_url = _required_env("API_URL")
+        jwt_api_endpoint = _jwt_api_endpoint(api_url)
+        sponsors_api_endpoint = f"{api_url.rstrip('/')}/sponsored-contract/token"
     except RuntimeError:
         logger.error("operation=startup outcome=config_validation_failed")
         raise
@@ -227,7 +229,7 @@ def create_app() -> Flask:
         )
         return response
 
-    def generate_link(feature_flag: str, link_type: str) -> object:
+    def generate_link(token_payload: dict, link_type: str, endpoint: str = jwt_api_endpoint) -> object:
         started_at = time.perf_counter()
         if not is_authenticated():
             logger.warning(
@@ -265,17 +267,17 @@ def create_app() -> Flask:
         upstream_started_at = time.perf_counter()
         logger.info(
             "operation=jwt_api outcome=request_started target=%s",
-            _loggable_api_url(jwt_api_endpoint),
+            _loggable_api_url(endpoint),
         )
         try:
             response = requests.post(
-                jwt_api_endpoint,
+                endpoint,
                 headers={
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                     "X-Admin-Gateway-Token": admin_gateway_secret,
                 },
-                json={"ff": [feature_flag], **({"expiresAt": expires_at} if expires_at else {})},
+                json={**token_payload, **({"expiresAt": expires_at} if expires_at else {})},
                 timeout=10,
             )
         except requests.RequestException as error:
@@ -354,11 +356,19 @@ def create_app() -> Flask:
 
     @app.post("/api/links/social-tariff")
     def social_tariff_link() -> object:
-        return generate_link("socialTariffByPass", "social_tariff")
+        return generate_link({"ff": ["socialTariffByPass"]}, "social_tariff")
 
     @app.post("/api/links/send-signature")
     def send_signature_link() -> object:
-        return generate_link("sendSignaturit", "send_signature")
+        return generate_link({"ff": ["sendSignaturit"]}, "send_signature")
+
+    @app.post("/api/links/sponsor")
+    def sponsor_link() -> object:
+        return generate_link(
+            {"vat": "F81129827", "code": "SociaActivista"},
+            "sponsor",
+            sponsors_api_endpoint,
+        )
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(error: Exception) -> object:
