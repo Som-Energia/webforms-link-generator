@@ -740,7 +740,7 @@ a.url-link:hover {
 /* Generator cards */
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-6);
 }
 
@@ -1100,6 +1100,10 @@ a.url-link:hover {
 }
 
 @media (max-width: 640px) {
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+
   .admin-shell {
     gap: var(--space-4);
     padding: var(--space-3) var(--space-3) var(--space-8);
