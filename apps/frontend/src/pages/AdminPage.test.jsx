@@ -36,10 +36,16 @@ afterEach(() => {
 describe("AdminPage", () => {
   it("generates sponsor links with fixed disabled fields and selectable expiry", async () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
-    generateSponsorLink.mockResolvedValue(`${DEFAULT_FORM_URL}&token=sponsor-token`);
+    generateSponsorLink.mockResolvedValue(
+      `${DEFAULT_FORM_URL}&token=sponsor-token`,
+    );
     render(<AdminPage />);
 
-    const card = within(screen.getByRole("heading", { name: "Enllaç de sòcia activista" }).closest("article"));
+    const card = within(
+      screen
+        .getByRole("heading", { name: "Enllaç de sòcia activista" })
+        .closest("article"),
+    );
     expect(card.getByLabelText("NIF").value).toBe("F81129827");
     expect(card.getByLabelText("NIF").disabled).toBe(true);
     expect(card.queryByRole("textbox", { name: "NIF" })).toBeNull();
@@ -53,12 +59,15 @@ describe("AdminPage", () => {
     const startedAt = Date.now();
     fireEvent.click(card.getByRole("button", { name: "Genera l'enllaç" }));
 
-    await waitFor(() => expect(generateSponsorLink).toHaveBeenCalledWith("", ISO_DATE));
+    await waitFor(() =>
+      expect(generateSponsorLink).toHaveBeenCalledWith("", ISO_DATE),
+    );
     const expiresAt = Date.parse(generateSponsorLink.mock.calls[0][1]);
     expect(expiresAt).toBeGreaterThanOrEqual(startedAt + 30 * 86400000);
     expect(expiresAt).toBeLessThanOrEqual(Date.now() + 30 * 86400000);
     expect(await card.findByRole("link")).toHaveProperty(
-      "href", `${DEFAULT_FORM_URL}&token=sponsor-token&owner=ada-lovelace&tt=sponsor`,
+      "href",
+      `${DEFAULT_FORM_URL}&token=sponsor-token&owner=ada-lovelace&tt=sponsor`,
     );
   });
 
@@ -178,7 +187,7 @@ describe("AdminPage", () => {
       "",
     );
     const socialTariffCard = screen
-      .getByRole("heading", { name: "Tarifa social" })
+      .getByRole("heading", { name: "Bo social" })
       .closest("article");
     fireEvent.click(
       within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }),
@@ -200,7 +209,7 @@ describe("AdminPage", () => {
     render(<AdminPage />);
 
     const socialTariffCard = screen
-      .getByRole("heading", { name: "Tarifa social" })
+      .getByRole("heading", { name: "Bo social" })
       .closest("article");
     const sendSignatureCard = screen
       .getByRole("heading", { name: "Enviament de signatura" })
@@ -336,7 +345,7 @@ describe("AdminPage", () => {
     render(<AdminPage />);
 
     const socialTariffCard = screen
-      .getByRole("heading", { name: "Tarifa social" })
+      .getByRole("heading", { name: "Bo social" })
       .closest("article");
     expect(socialTariffCard).not.toBeNull();
     expect(
@@ -582,7 +591,7 @@ describe("AdminPage", () => {
     render(<AdminPage />);
 
     const socialTariffCard = screen
-      .getByRole("heading", { name: "Tarifa social" })
+      .getByRole("heading", { name: "Bo social" })
       .closest("article");
     fireEvent.click(
       within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }),
@@ -621,9 +630,15 @@ describe("AdminPage", () => {
         name: "Quin enllaç he de fer servir?",
       }),
     ).not.toBeNull();
-    expect(within(dialog).getByRole("heading", { name: "Enllaç de sòcia activista" })).not.toBeNull();
-    expect(within(dialog).getByText(/les dades d'apadrinament estan predefinides/).textContent)
-      .toContain("1 dia, 7 dies o 30 dies");
+    expect(
+      within(dialog).getByRole("heading", {
+        name: "Enllaç de sòcia activista",
+      }),
+    ).not.toBeNull();
+    expect(
+      within(dialog).getByText(/les dades d'apadrinament estan predefinides/)
+        .textContent,
+    ).toContain("1 dia, 7 dies o 30 dies");
     expect(document.activeElement).toBe(
       within(dialog).getByRole("button", { name: "Tanca l'ajuda" }),
     );

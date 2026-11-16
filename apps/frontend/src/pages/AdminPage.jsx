@@ -440,13 +440,13 @@ export function AdminPage() {
 
       <section className="cards-grid" aria-label="Generadors d'enllaços">
         <LinkGeneratorCard
-          title="Tarifa social"
+          title="Bo social"
           tt="featureFlag"
           description={
             <>
               Genera un enllaç amb <code>socialTariffByPass</code> activat. El
               formulari que es mostra no restringeix que l'usuari entri un CUPS
-              amb tarifa social.
+              amb bo social.
             </>
           }
           generateLink={(expiresAt) =>
