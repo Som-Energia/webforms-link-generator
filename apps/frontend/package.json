@@ -11,7 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@somenergia/tokens": "^1.0.0",
+    "@somenergia/design-tokens": "^1.0.0",
+    "@somenergia/brand": "^1.0.0",
     "@vitejs/plugin-react": "latest",
     "react": "latest",
     "react-dom": "latest",
