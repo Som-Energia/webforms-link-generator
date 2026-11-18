@@ -46,11 +46,11 @@ describe("AdminPage", () => {
         .getByRole("heading", { name: "Enllaç de sòcia activista" })
         .closest("article"),
     );
-    expect(card.getByLabelText("NIF").value).toBe("F81129827");
+    expect(card.getByLabelText("NIF").value).toBe("99999998T");
     expect(card.getByLabelText("NIF").disabled).toBe(true);
     expect(card.queryByRole("textbox", { name: "NIF" })).toBeNull();
     expect(card.queryByRole("textbox", { name: "Núm. de sòcia" })).toBeNull();
-    expect(card.getByLabelText("Núm. de sòcia").value).toBe("SociaActivista");
+    expect(card.getByLabelText("Núm. de sòcia").value).toBe("S999998");
     expect(card.getByLabelText("Núm. de sòcia").disabled).toBe(true);
 
     expect(card.getByRole("radio", { name: "1 dia" }).checked).toBe(true);

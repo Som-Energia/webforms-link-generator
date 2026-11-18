@@ -489,13 +489,13 @@ export function AdminPage() {
             <div className="form-url-field">
               <label htmlFor="sponsor-vat">NIF</label>
               <div className="text-input">
-                <input id="sponsor-vat" value="F81129827" disabled />
+                <input id="sponsor-vat" value="99999998T" disabled />
               </div>
             </div>
             <div className="form-url-field">
               <label htmlFor="sponsor-code">Núm. de sòcia</label>
               <div className="text-input">
-                <input id="sponsor-code" value="SociaActivista" disabled />
+                <input id="sponsor-code" value="S999998" disabled />
               </div>
             </div>
           </div>
