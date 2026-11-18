@@ -14,6 +14,8 @@ REQUIRED_ENV = {
     "ADMIN_PASSWORD": "secret",
     "SESSION_SECRET": "x" * 32,
     "ADMIN_GATEWAY_SECRET": "gateway-secret",
+    "ACTIVIST_SPONSOR_VAT": "configured-activist-vat",
+    "ACTIVIST_SPONSOR_CODE": "configured-activist-code",
     "API_URL": "https://jwt.example.test/admin/api",
     "COOKIE_SECURE": "false",
 }
@@ -149,6 +151,104 @@ def test_social_tariff_reports_the_upstream_status_without_its_body(client, monk
         "message": "L'API externa no pot generar el token.",
         "detail": "L'API JWT ha retornat HTTP 503.",
     }
+
+
+def test_activist_sponsor_requires_authentication(client, monkeypatch):
+    monkeypatch.setattr("app.main.requests.post", pytest.fail)
+    response = client.post("/api/links/activist-sponsor", json={"expiresAt": "2099-01-02T03:04:05Z"})
+    assert response.status_code == 401
+
+
+@pytest.mark.parametrize("custom_url", [None, "https://forms.example.test/alta?source=fira"])
+def test_activist_sponsor_generates_link_with_configured_data(client, monkeypatch, custom_url):
+    class FakeResponse:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"data": {"token": "sponsor-token"}}
+
+    calls = []
+
+    def fake_post(*args, **kwargs):
+        calls.append((args, kwargs))
+        return FakeResponse()
+
+    monkeypatch.setattr("app.main.requests.post", fake_post)
+    login(client)
+    payload = {
+        "expiresAt": "2099-01-02T03:04:05+02:00",
+        "vat": "must-not-override",
+        "code": "must-not-override",
+    }
+    if custom_url:
+        payload["formUrl"] = custom_url
+    response = client.post("/api/links/activist-sponsor", json=payload)
+
+    assert response.status_code == 200
+    destination = custom_url or "https://www.somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic"
+    assert response.json == {"link": f"{destination}&token=sponsor-token"}
+    assert calls[0][0] == ("https://jwt.example.test/admin/api/sponsored-contract/token",)
+    assert calls[0][1]["json"] == {
+        "vat": "configured-activist-vat",
+        "code": "configured-activist-code",
+        "expiresAt": "2099-01-02T01:04:05.000Z",
+    }
+    assert calls[0][1]["headers"]["X-Admin-Gateway-Token"] == "gateway-secret"
+
+
+def test_sponsor_requires_authentication(client, monkeypatch):
+    monkeypatch.setattr("app.main.requests.post", pytest.fail)
+    assert client.post("/api/links/sponsor", json={}).status_code == 401
+
+
+@pytest.mark.parametrize("payload", [
+    {}, {"vat": "nif"}, {"code": "code"},
+    {"vat": "  ", "code": "code"}, {"vat": "nif", "code": " "},
+    {"vat": None, "code": "code"}, {"vat": "nif", "code": 123},
+    ["invalid"],
+])
+def test_sponsor_requires_nonempty_fields(client, monkeypatch, payload):
+    monkeypatch.setattr("app.main.requests.post", pytest.fail)
+    login(client)
+    assert client.post("/api/links/sponsor", json=payload).status_code == 400
+
+
+@pytest.mark.parametrize("custom_url", [None, "https://forms.example.test/alta?source=fira"])
+def test_sponsor_forwards_editable_fields(client, monkeypatch, custom_url):
+    class FakeResponse:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"data": {"token": "custom-sponsor"}}
+
+    calls = []
+
+    def fake_post(*args, **kwargs):
+        calls.append((args, kwargs))
+        return FakeResponse()
+
+    monkeypatch.setattr("app.main.requests.post", fake_post)
+    login(client)
+    payload = {"vat": " custom-nif ", "code": " custom-code ", "expiresAt": "2099-01-02T03:04:05Z"}
+    if custom_url:
+        payload["formUrl"] = custom_url
+    response = client.post("/api/links/sponsor", json=payload)
+    assert response.status_code == 200
+    destination = custom_url or "https://www.somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic"
+    assert response.json == {"link": f"{destination}&token=custom-sponsor"}
+    assert calls[0][0] == ("https://jwt.example.test/admin/api/sponsored-contract/token",)
+    assert calls[0][1]["json"] == {
+        "vat": "custom-nif", "code": "custom-code", "expiresAt": "2099-01-02T03:04:05.000Z",
+    }
+
+
+def test_activist_sponsor_rejects_invalid_expiry(client, monkeypatch):
+    monkeypatch.setattr("app.main.requests.post", pytest.fail)
+    login(client)
+    response = client.post("/api/links/activist-sponsor", json={"expiresAt": "invalid"})
+    assert response.status_code == 400
 
 
 def test_send_signature_generates_link(client, monkeypatch):

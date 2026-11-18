@@ -22,7 +22,7 @@ function safeDiagnostic(details) {
     .slice(0, 500);
 }
 
-async function generateFeatureFlagLink(path, formUrl = "", expiresAt) {
+async function generateFeatureFlagLink(path, formUrl = "", expiresAt, fields = {}) {
   const customFormUrl = validateFormUrl(formUrl);
   let response;
 
@@ -31,6 +31,7 @@ async function generateFeatureFlagLink(path, formUrl = "", expiresAt) {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify({
+        ...fields,
         ...(customFormUrl ? { formUrl: customFormUrl } : {}),
         ...(expiresAt ? { expiresAt } : {}),
       }),
@@ -70,6 +71,17 @@ async function generateFeatureFlagLink(path, formUrl = "", expiresAt) {
 
 export async function generateSocialTariffLink(formUrl = "", expiresAt) {
   return generateFeatureFlagLink("/api/links/social-tariff", formUrl, expiresAt);
+}
+
+export async function generateActivistSponsorLink(formUrl = "", expiresAt) {
+  return generateFeatureFlagLink("/api/links/activist-sponsor", formUrl, expiresAt);
+}
+
+export async function generateSponsorLink(formUrl = "", expiresAt, vat, code) {
+  return generateFeatureFlagLink("/api/links/sponsor", formUrl, expiresAt, {
+    vat: vat.trim(),
+    code: code.trim(),
+  });
 }
 
 export async function generateSendSignatureLink(formUrl = "", expiresAt) {

@@ -3,6 +3,8 @@ import { LinkGeneratorCard } from "../ui/LinkGeneratorCard";
 import {
   generateSendSignatureLink,
   generateSocialTariffLink,
+  generateActivistSponsorLink,
+  generateSponsorLink,
 } from "../api/links";
 import { ThemeToggle } from "../theme/ThemeToggle";
 import LogoIcon from "../ui/Logo";
@@ -61,6 +63,8 @@ function isTypingHttpsPrefix(formUrl) {
 
 export function AdminPage() {
   const [formUrl, setFormUrl] = useState("");
+  const [contractSponsorVat, setContractSponsorVat] = useState("");
+  const [contractSponsorCode, setContractSponsorCode] = useState("");
   const [isFormUrlTouched, setIsFormUrlTouched] = useState(false);
   const [includesOwner, setIncludesOwner] = useState(true);
   const [leadTagSettings, setLeadTagSettings] = useState(readLeadTagSettings);
@@ -439,12 +443,13 @@ export function AdminPage() {
 
       <section className="cards-grid" aria-label="Generadors d'enllaços">
         <LinkGeneratorCard
-          title="Tarifa social"
+          title="Bo social"
+          tt="featureFlag"
           description={
             <>
               Genera un enllaç amb <code>socialTariffByPass</code> activat. El
               formulari que es mostra no restringeix que l'usuari entri un CUPS
-              amb tarifa social.
+              amb bo social.
             </>
           }
           generateLink={(expiresAt) =>
@@ -457,6 +462,7 @@ export function AdminPage() {
         />
         <LinkGeneratorCard
           title="Enviament de signatura"
+          tt="featureFlag"
           description={
             <>
               Genera un enllaç amb <code>sendSignaturit</code> activat. Al resum
@@ -472,6 +478,72 @@ export function AdminPage() {
           leadTag={leadTag}
           disabled={!isFormUrlValid}
         />
+        <LinkGeneratorCard
+          title="Enllaç de sòcia activista"
+          tt="sponsor"
+          description="Genera un enllaç perquè una sòcia activista apadrini els contractes de les persones amb qui el comparteixi."
+          generateLink={(expiresAt) =>
+            generateActivistSponsorLink(formUrl, expiresAt)
+          }
+          expiryOptions={["1day", "7days", "30days"]}
+          owner={linkOwner}
+          leadTag={leadTag}
+          disabled={!isFormUrlValid}
+        />
+        <LinkGeneratorCard
+          title="Apadrina un contracte"
+          tt="sponsor"
+          description="Genera un enllaç per apadrinar un contracte amb el NIF i el número de sòcia indicats."
+          generateLink={(expiresAt) =>
+            generateSponsorLink(
+              formUrl,
+              expiresAt,
+              contractSponsorVat,
+              contractSponsorCode,
+            )
+          }
+          expiryOptions={["1day", "7days", "30days"]}
+          owner={linkOwner}
+          leadTag={leadTag}
+          disabled={
+            !isFormUrlValid ||
+            !contractSponsorVat.trim() ||
+            !contractSponsorCode.trim()
+          }
+        >
+          <div>
+            <div className="form-url-field">
+              <label htmlFor="contract-sponsor-vat">
+                NIF <span aria-hidden="true">*</span>
+              </label>
+              <div className="text-input">
+                <input
+                  id="contract-sponsor-vat"
+                  value={contractSponsorVat}
+                  onChange={(event) =>
+                    setContractSponsorVat(event.target.value)
+                  }
+                  required
+                />
+              </div>
+            </div>
+            <div className="form-url-field">
+              <label htmlFor="contract-sponsor-code">
+                Núm. de sòcia <span aria-hidden="true">*</span>
+              </label>
+              <div className="text-input">
+                <input
+                  id="contract-sponsor-code"
+                  value={contractSponsorCode}
+                  onChange={(event) =>
+                    setContractSponsorCode(event.target.value)
+                  }
+                  required
+                />
+              </div>
+            </div>
+          </div>
+        </LinkGeneratorCard>
       </section>
       {isHelpOpen ? <HelpModal onClose={handleCloseHelp} /> : null}
       {isEditingOwner ? (
