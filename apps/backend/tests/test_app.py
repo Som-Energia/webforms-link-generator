@@ -188,8 +188,8 @@ def test_sponsor_generates_link_with_fixed_data(client, monkeypatch, custom_url)
     assert response.json == {"link": f"{destination}&token=sponsor-token"}
     assert calls[0][0] == ("https://jwt.example.test/admin/api/sponsored-contract/token",)
     assert calls[0][1]["json"] == {
-        "vat": "F81129827",
-        "code": "SociaActivista",
+        "vat": "99999998T",
+        "code": "S999998",
         "expiresAt": "2099-01-02T01:04:05.000Z",
     }
     assert calls[0][1]["headers"]["X-Admin-Gateway-Token"] == "gateway-secret"

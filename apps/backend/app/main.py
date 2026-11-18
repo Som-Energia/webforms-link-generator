@@ -365,7 +365,7 @@ def create_app() -> Flask:
     @app.post("/api/links/sponsor")
     def sponsor_link() -> object:
         return generate_link(
-            {"vat": "F81129827", "code": "SociaActivista"},
+            {"vat": "99999998T", "code": "S999998"},
             "sponsor",
             sponsors_api_endpoint,
         )
