@@ -150,6 +150,8 @@ def create_app() -> Flask:
         if len(session_secret) < 32:
             raise RuntimeError("SESSION_SECRET must be at least 32 characters.")
 
+        activist_sponsor_vat = _required_env("ACTIVIST_SPONSOR_VAT")
+        activist_sponsor_code = _required_env("ACTIVIST_SPONSOR_CODE")
         admin_gateway_secret = _required_env("ADMIN_GATEWAY_SECRET")
         api_url = _required_env("API_URL")
         jwt_api_endpoint = _jwt_api_endpoint(api_url)
@@ -240,6 +242,14 @@ def create_app() -> Flask:
             return jsonify({"message": "Unauthorized"}), 401
 
         payload = request.get_json(silent=True) or {}
+
+        if link_type == "sponsor":
+            if not isinstance(payload, dict) or any(
+                not isinstance(payload.get(field), str) or not payload[field].strip()
+                for field in ("vat", "code")
+            ):
+                return jsonify({"message": "El NIF i el número de sòcia són obligatoris."}), 400
+            token_payload = {field: payload[field].strip() for field in ("vat", "code")}
 
         try:
             form_url = _custom_form_url(payload.get("formUrl"))
@@ -362,13 +372,17 @@ def create_app() -> Flask:
     def send_signature_link() -> object:
         return generate_link({"ff": ["sendSignaturit"]}, "send_signature")
 
-    @app.post("/api/links/sponsor")
-    def sponsor_link() -> object:
+    @app.post("/api/links/activist-sponsor")
+    def activist_sponsor_link() -> object:
         return generate_link(
-            {"vat": "99999998T", "code": "S999998"},
-            "sponsor",
+            {"vat": activist_sponsor_vat, "code": activist_sponsor_code},
+            "activist_sponsor",
             sponsors_api_endpoint,
         )
+
+    @app.post("/api/links/sponsor")
+    def sponsor_link() -> object:
+        return generate_link({}, "sponsor", sponsors_api_endpoint)
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(error: Exception) -> object:
