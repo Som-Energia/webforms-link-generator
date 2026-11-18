@@ -1,12 +1,27 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { generateSendSignatureLink, generateSocialTariffLink, generateSponsorLink } from "./links";
+import { generateSendSignatureLink, generateSocialTariffLink, generateActivistSponsorLink, generateSponsorLink } from "./links";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("generateSponsorLink", () => {
-  it("sends the form URL and expiry to the sponsor route", async () => {
+  it("sends trimmed editable fields to the contract sponsor route", async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ link: "https://forms.example.test/?token=sponsor" }),
+    });
+    vi.stubGlobal("fetch", fetch);
+    await generateSponsorLink("", "2099-01-02T03:04:05.000Z", " custom-nif ", " custom-code ");
+    expect(fetch.mock.calls[0][0]).toBe("/api/links/sponsor");
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+      vat: "custom-nif", code: "custom-code", expiresAt: "2099-01-02T03:04:05.000Z",
+    });
+  });
+});
+
+describe("generateActivistSponsorLink", () => {
+  it("sends the form URL and expiry to the activist sponsor route", async () => {
     const fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({ link: "https://forms.example.test/?token=sponsor" }),
@@ -15,8 +30,8 @@ describe("generateSponsorLink", () => {
     const formUrl = "https://forms.example.test/";
     const expiresAt = "2099-01-02T03:04:05.000Z";
 
-    await expect(generateSponsorLink(formUrl, expiresAt)).resolves.toBe(`${formUrl}?token=sponsor`);
-    expect(fetch).toHaveBeenCalledWith("/api/links/sponsor", {
+    await expect(generateActivistSponsorLink(formUrl, expiresAt)).resolves.toBe(`${formUrl}?token=sponsor`);
+    expect(fetch).toHaveBeenCalledWith("/api/links/activist-sponsor", {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify({ formUrl, expiresAt }),

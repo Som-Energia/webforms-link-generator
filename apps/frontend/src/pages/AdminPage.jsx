@@ -3,6 +3,7 @@ import { LinkGeneratorCard } from "../ui/LinkGeneratorCard";
 import {
   generateSendSignatureLink,
   generateSocialTariffLink,
+  generateActivistSponsorLink,
   generateSponsorLink,
 } from "../api/links";
 import { ThemeToggle } from "../theme/ThemeToggle";
@@ -62,6 +63,8 @@ function isTypingHttpsPrefix(formUrl) {
 
 export function AdminPage() {
   const [formUrl, setFormUrl] = useState("");
+  const [contractSponsorVat, setContractSponsorVat] = useState("");
+  const [contractSponsorCode, setContractSponsorCode] = useState("");
   const [isFormUrlTouched, setIsFormUrlTouched] = useState(false);
   const [includesOwner, setIncludesOwner] = useState(true);
   const [leadTagSettings, setLeadTagSettings] = useState(readLeadTagSettings);
@@ -479,23 +482,64 @@ export function AdminPage() {
           title="Enllaç de sòcia activista"
           tt="sponsor"
           description="Genera un enllaç perquè una sòcia activista apadrini els contractes de les persones amb qui el comparteixi."
-          generateLink={(expiresAt) => generateSponsorLink(formUrl, expiresAt)}
+          generateLink={(expiresAt) =>
+            generateActivistSponsorLink(formUrl, expiresAt)
+          }
           expiryOptions={["1day", "7days", "30days"]}
           owner={linkOwner}
           leadTag={leadTag}
           disabled={!isFormUrlValid}
+        />
+        <LinkGeneratorCard
+          title="Apadrina un contracte"
+          tt="sponsor"
+          description="Genera un enllaç per apadrinar un contracte amb el NIF i el número de sòcia indicats."
+          generateLink={(expiresAt) =>
+            generateSponsorLink(
+              formUrl,
+              expiresAt,
+              contractSponsorVat,
+              contractSponsorCode,
+            )
+          }
+          expiryOptions={["1day", "7days", "30days"]}
+          owner={linkOwner}
+          leadTag={leadTag}
+          disabled={
+            !isFormUrlValid ||
+            !contractSponsorVat.trim() ||
+            !contractSponsorCode.trim()
+          }
         >
-          <div hidden>
+          <div>
             <div className="form-url-field">
-              <label htmlFor="sponsor-vat">NIF</label>
+              <label htmlFor="contract-sponsor-vat">
+                NIF <span aria-hidden="true">*</span>
+              </label>
               <div className="text-input">
-                <input id="sponsor-vat" value="99999998T" disabled />
+                <input
+                  id="contract-sponsor-vat"
+                  value={contractSponsorVat}
+                  onChange={(event) =>
+                    setContractSponsorVat(event.target.value)
+                  }
+                  required
+                />
               </div>
             </div>
             <div className="form-url-field">
-              <label htmlFor="sponsor-code">Núm. de sòcia</label>
+              <label htmlFor="contract-sponsor-code">
+                Núm. de sòcia <span aria-hidden="true">*</span>
+              </label>
               <div className="text-input">
-                <input id="sponsor-code" value="S999998" disabled />
+                <input
+                  id="contract-sponsor-code"
+                  value={contractSponsorCode}
+                  onChange={(event) =>
+                    setContractSponsorCode(event.target.value)
+                  }
+                  required
+                />
               </div>
             </div>
           </div>
