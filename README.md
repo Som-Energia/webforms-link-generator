@@ -59,6 +59,8 @@ Set these values in `apps/backend/.env` before starting the local backend:
 | `SESSION_SECRET`       | Secret of at least 32 characters.                                         |
 | `ADMIN_GATEWAY_SECRET` | Token sent to the JWT API as `X-Admin-Gateway-Token`.                     |
 | `API_URL`              | Reachable external API base URL; the backend adds `/feature-flags/token`. |
+| `ACTIVIST_SPONSOR_VAT` | NIF used by the activist sponsor card.                                   |
+| `ACTIVIST_SPONSOR_CODE` | Member number used by the activist sponsor card.                        |
 | `COOKIE_SECURE`        | Set to `false` for local HTTP; leave `true` for HTTPS deployments.        |
 
 `PORT` defaults to `3000`; the Make backend target explicitly uses port `3000`. The local Flask CLI loads `apps/backend/.env`; the application also loads the root `.env` without overriding variables already set. Already-exported environment variables take precedence. Keep both `.env` files out of version control.
