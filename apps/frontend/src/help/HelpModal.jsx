@@ -19,6 +19,12 @@ const LINK_TYPES = [
     details:
       "Al final del formulari apareix un botó per enviar la signatura per correu electrònic, perquè la persona pugui signar més tard des del seu correu.",
   },
+  {
+    title: "Enllaç de sòcia activista",
+    when: "Per a sòcies activistes que comparteixen l'enllaç en fires o altres activitats.",
+    details:
+      "Permet apadrinar els contractes de les persones amb qui es comparteix l'enllaç. Pots triar una caducitat d'1 dia, 7 dies o 30 dies. De moment, les dades d'apadrinament estan predefinides i no cal omplir cap formulari.",
+  },
 ];
 
 export function HelpModal({ onClose }) {
@@ -71,7 +77,8 @@ export function HelpModal({ onClose }) {
             </p>
             <p>
               També pots crear enllaços especials per a casos concrets, com
-              persones amb bo social o que necessiten signar més tard.
+              persones amb bo social, que necessiten signar més tard o que
+              contracten amb l'apadrinament d'una sòcia activista.
             </p>
           </section>
 
@@ -106,6 +113,13 @@ export function HelpModal({ onClose }) {
                 campanya s'acabi.
               </li>
               <li>
+                <strong>Genera l'enllaç especial que necessitis.</strong> Tria
+                la targeta corresponent i la caducitat abans de prémer{" "}
+                <em>Genera l'enllaç</em>. La targeta d'enllaç de sòcia activista fa servir
+                el mateix formulari de destí i les mateixes opcions d'usuari
+                i etiqueta de campanya que la resta.
+              </li>
+              <li>
                 <strong>Copia l'enllaç i envia'l.</strong> Fes clic al botó de
                 copiar que hi ha al costat de cada enllaç i enganxa'l en un
                 correu, un missatge o on el necessitis.
@@ -130,11 +144,13 @@ export function HelpModal({ onClose }) {
             <h2 id="help-tips">Cal que tinguis en compte</h2>
             <ul className="help-tips">
               <li>
-                Els enllaços de <strong>tarifa social</strong> i{" "}
-                <strong>enviament de signatura</strong> caduquen al cap de 30
-                minuts. Crea'ls just abans d'enviar-los. Si un enllaç ha
-                caducat, prem una altra vegada <em>Genera l'enllaç</em> per
-                tenir-ne un de nou.
+                La caducitat depèn de l'opció que triïs: <strong>tarifa
+                social</strong> permet 30 minuts o 1 hora; <strong>enviament
+                de signatura</strong>, 30 minuts, 1 hora, 7 dies o 30 dies;
+                i <strong>enllaç de sòcia activista</strong>, 1 dia, 7 dies
+                o 30 dies. El compte enrere indica quant temps queda. Si un
+                enllaç ha caducat, prem una altra vegada <em>Genera l'enllaç</em>{" "}
+                per tenir-ne un de nou.
               </li>
               <li>
                 Si l'adreça del formulari no és correcta, la casella es posa

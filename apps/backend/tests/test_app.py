@@ -151,6 +151,57 @@ def test_social_tariff_reports_the_upstream_status_without_its_body(client, monk
     }
 
 
+def test_sponsor_requires_authentication(client, monkeypatch):
+    monkeypatch.setattr("app.main.requests.post", pytest.fail)
+    response = client.post("/api/links/sponsor", json={"expiresAt": "2099-01-02T03:04:05Z"})
+    assert response.status_code == 401
+
+
+@pytest.mark.parametrize("custom_url", [None, "https://forms.example.test/alta?source=fira"])
+def test_sponsor_generates_link_with_fixed_data(client, monkeypatch, custom_url):
+    class FakeResponse:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"data": {"token": "sponsor-token"}}
+
+    calls = []
+
+    def fake_post(*args, **kwargs):
+        calls.append((args, kwargs))
+        return FakeResponse()
+
+    monkeypatch.setattr("app.main.requests.post", fake_post)
+    login(client)
+    payload = {
+        "expiresAt": "2099-01-02T03:04:05+02:00",
+        "vat": "must-not-override",
+        "code": "must-not-override",
+    }
+    if custom_url:
+        payload["formUrl"] = custom_url
+    response = client.post("/api/links/sponsor", json=payload)
+
+    assert response.status_code == 200
+    destination = custom_url or "https://www.somenergia.coop/ca/formulari-contractacio-periodes?form_type=domestic"
+    assert response.json == {"link": f"{destination}&token=sponsor-token"}
+    assert calls[0][0] == ("https://jwt.example.test/admin/api/sponsored-contract/token",)
+    assert calls[0][1]["json"] == {
+        "vat": "F81129827",
+        "code": "SociaActivista",
+        "expiresAt": "2099-01-02T01:04:05.000Z",
+    }
+    assert calls[0][1]["headers"]["X-Admin-Gateway-Token"] == "gateway-secret"
+
+
+def test_sponsor_rejects_invalid_expiry(client, monkeypatch):
+    monkeypatch.setattr("app.main.requests.post", pytest.fail)
+    login(client)
+    response = client.post("/api/links/sponsor", json={"expiresAt": "invalid"})
+    assert response.status_code == 400
+
+
 def test_send_signature_generates_link(client, monkeypatch):
     class FakeResponse:
         ok = True

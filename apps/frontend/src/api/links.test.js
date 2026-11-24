@@ -1,8 +1,27 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { generateSendSignatureLink, generateSocialTariffLink } from "./links";
+import { generateSendSignatureLink, generateSocialTariffLink, generateSponsorLink } from "./links";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("generateSponsorLink", () => {
+  it("sends the form URL and expiry to the sponsor route", async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ link: "https://forms.example.test/?token=sponsor" }),
+    });
+    vi.stubGlobal("fetch", fetch);
+    const formUrl = "https://forms.example.test/";
+    const expiresAt = "2099-01-02T03:04:05.000Z";
+
+    await expect(generateSponsorLink(formUrl, expiresAt)).resolves.toBe(`${formUrl}?token=sponsor`);
+    expect(fetch).toHaveBeenCalledWith("/api/links/sponsor", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ formUrl, expiresAt }),
+    });
+  });
 });
 
 describe("generateSocialTariffLink", () => {

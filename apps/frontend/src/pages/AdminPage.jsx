@@ -3,6 +3,7 @@ import { LinkGeneratorCard } from "../ui/LinkGeneratorCard";
 import {
   generateSendSignatureLink,
   generateSocialTariffLink,
+  generateSponsorLink,
 } from "../api/links";
 import { ThemeToggle } from "../theme/ThemeToggle";
 import LogoIcon from "../ui/Logo";
@@ -440,6 +441,7 @@ export function AdminPage() {
       <section className="cards-grid" aria-label="Generadors d'enllaços">
         <LinkGeneratorCard
           title="Tarifa social"
+          tt="featureFlag"
           description={
             <>
               Genera un enllaç amb <code>socialTariffByPass</code> activat. El
@@ -457,6 +459,7 @@ export function AdminPage() {
         />
         <LinkGeneratorCard
           title="Enviament de signatura"
+          tt="featureFlag"
           description={
             <>
               Genera un enllaç amb <code>sendSignaturit</code> activat. Al resum
@@ -472,6 +475,31 @@ export function AdminPage() {
           leadTag={leadTag}
           disabled={!isFormUrlValid}
         />
+        <LinkGeneratorCard
+          title="Enllaç de sòcia activista"
+          tt="sponsor"
+          description="Genera un enllaç perquè una sòcia activista apadrini els contractes de les persones amb qui el comparteixi."
+          generateLink={(expiresAt) => generateSponsorLink(formUrl, expiresAt)}
+          expiryOptions={["1day", "7days", "30days"]}
+          owner={linkOwner}
+          leadTag={leadTag}
+          disabled={!isFormUrlValid}
+        >
+          <div hidden>
+            <div className="form-url-field">
+              <label htmlFor="sponsor-vat">NIF</label>
+              <div className="text-input">
+                <input id="sponsor-vat" value="F81129827" disabled />
+              </div>
+            </div>
+            <div className="form-url-field">
+              <label htmlFor="sponsor-code">Núm. de sòcia</label>
+              <div className="text-input">
+                <input id="sponsor-code" value="SociaActivista" disabled />
+              </div>
+            </div>
+          </div>
+        </LinkGeneratorCard>
       </section>
       {isHelpOpen ? <HelpModal onClose={handleCloseHelp} /> : null}
       {isEditingOwner ? (
