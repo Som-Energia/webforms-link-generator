@@ -548,6 +548,7 @@ code {
 .form-url-field {
   display: grid;
   gap: var(--som-space-2);
+  margin-top: var(--som-space-4);
 }
 
 .owner-toggle-row {

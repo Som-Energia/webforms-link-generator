@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   generateSendSignatureLink,
   generateSocialTariffLink,
+  generateActivistSponsorLink,
   generateSponsorLink,
 } from "../api/links";
 import { version } from "../../package.json";
@@ -24,6 +25,7 @@ const ISO_DATE = expect.stringMatching(
 vi.mock("../api/links", () => ({
   generateSendSignatureLink: vi.fn(),
   generateSocialTariffLink: vi.fn(),
+  generateActivistSponsorLink: vi.fn(),
   generateSponsorLink: vi.fn(),
 }));
 
@@ -34,9 +36,9 @@ afterEach(() => {
 });
 
 describe("AdminPage", () => {
-  it("generates sponsor links with fixed disabled fields and selectable expiry", async () => {
+  it("generates activist sponsor links without fields and with selectable expiry", async () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
-    generateSponsorLink.mockResolvedValue(
+    generateActivistSponsorLink.mockResolvedValue(
       `${DEFAULT_FORM_URL}&token=sponsor-token`,
     );
     render(<AdminPage />);
@@ -46,12 +48,8 @@ describe("AdminPage", () => {
         .getByRole("heading", { name: "Enllaç de sòcia activista" })
         .closest("article"),
     );
-    expect(card.getByLabelText("NIF").value).toBe("99999998T");
-    expect(card.getByLabelText("NIF").disabled).toBe(true);
-    expect(card.queryByRole("textbox", { name: "NIF" })).toBeNull();
-    expect(card.queryByRole("textbox", { name: "Núm. de sòcia" })).toBeNull();
-    expect(card.getByLabelText("Núm. de sòcia").value).toBe("S999998");
-    expect(card.getByLabelText("Núm. de sòcia").disabled).toBe(true);
+    expect(card.queryByLabelText("NIF")).toBeNull();
+    expect(card.queryByLabelText("Núm. de sòcia")).toBeNull();
 
     expect(card.getByRole("radio", { name: "1 dia" }).checked).toBe(true);
     expect(card.getByRole("radio", { name: "7 dies" })).not.toBeNull();
@@ -60,15 +58,44 @@ describe("AdminPage", () => {
     fireEvent.click(card.getByRole("button", { name: "Genera l'enllaç" }));
 
     await waitFor(() =>
-      expect(generateSponsorLink).toHaveBeenCalledWith("", ISO_DATE),
+      expect(generateActivistSponsorLink).toHaveBeenCalledWith("", ISO_DATE),
     );
-    const expiresAt = Date.parse(generateSponsorLink.mock.calls[0][1]);
+    const expiresAt = Date.parse(generateActivistSponsorLink.mock.calls[0][1]);
     expect(expiresAt).toBeGreaterThanOrEqual(startedAt + 30 * 86400000);
     expect(expiresAt).toBeLessThanOrEqual(Date.now() + 30 * 86400000);
     expect(await card.findByRole("link")).toHaveProperty(
       "href",
       `${DEFAULT_FORM_URL}&token=sponsor-token&owner=ada-lovelace&tt=sponsor`,
     );
+  });
+
+  it("requires editable sponsor fields and generates a contract sponsor link", async () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    generateSponsorLink.mockResolvedValue(`${DEFAULT_FORM_URL}&token=custom-sponsor`);
+    render(<AdminPage />);
+    const card = within(screen.getByRole("heading", { name: "Apadrina un contracte" }).closest("article"));
+    const vat = card.getByRole("textbox", { name: "NIF" });
+    const code = card.getByRole("textbox", { name: "Núm. de sòcia" });
+    const button = card.getByRole("button", { name: "Genera l'enllaç" });
+    expect(vat.value).toBe("");
+    expect(code.value).toBe("");
+    expect(vat.required).toBe(true);
+    expect(code.required).toBe(true);
+    expect(button.disabled).toBe(true);
+    fireEvent.change(vat, { target: { value: "custom-nif" } });
+    expect(button.disabled).toBe(true);
+    fireEvent.change(code, { target: { value: "   " } });
+    expect(button.disabled).toBe(true);
+    fireEvent.change(code, { target: { value: "custom-code" } });
+    expect(button.disabled).toBe(false);
+    expect(card.getByRole("radio", { name: "1 dia" }).checked).toBe(true);
+    expect(card.getByRole("radio", { name: "7 dies" })).not.toBeNull();
+    fireEvent.click(card.getByRole("radio", { name: "30 dies" }));
+    fireEvent.click(button);
+    await waitFor(() => expect(generateSponsorLink).toHaveBeenCalledWith("", ISO_DATE, "custom-nif", "custom-code"));
+    expect(await card.findByRole("link")).toHaveProperty("href", `${DEFAULT_FORM_URL}&token=custom-sponsor&owner=ada-lovelace&tt=sponsor`);
+    fireEvent.change(vat, { target: { value: "" } });
+    expect(button.disabled).toBe(true);
   });
 
   it("displays the frontend version", () => {
