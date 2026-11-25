@@ -150,8 +150,12 @@ def create_app() -> Flask:
         if len(session_secret) < 32:
             raise RuntimeError("SESSION_SECRET must be at least 32 characters.")
 
+        activist_sponsor_vat = _required_env("ACTIVIST_SPONSOR_VAT")
+        activist_sponsor_code = _required_env("ACTIVIST_SPONSOR_CODE")
         admin_gateway_secret = _required_env("ADMIN_GATEWAY_SECRET")
-        jwt_api_endpoint = _jwt_api_endpoint(_required_env("API_URL"))
+        api_url = _required_env("API_URL")
+        jwt_api_endpoint = _jwt_api_endpoint(api_url)
+        sponsors_api_endpoint = f"{api_url.rstrip('/')}/sponsored-contract/token"
     except RuntimeError:
         logger.error("operation=startup outcome=config_validation_failed")
         raise
@@ -227,7 +231,7 @@ def create_app() -> Flask:
         )
         return response
 
-    def generate_link(feature_flag: str, link_type: str) -> object:
+    def generate_link(token_payload: dict, link_type: str, endpoint: str = jwt_api_endpoint) -> object:
         started_at = time.perf_counter()
         if not is_authenticated():
             logger.warning(
@@ -238,6 +242,14 @@ def create_app() -> Flask:
             return jsonify({"message": "Unauthorized"}), 401
 
         payload = request.get_json(silent=True) or {}
+
+        if link_type == "sponsor":
+            if not isinstance(payload, dict) or any(
+                not isinstance(payload.get(field), str) or not payload[field].strip()
+                for field in ("vat", "code")
+            ):
+                return jsonify({"message": "El NIF i el número de sòcia són obligatoris."}), 400
+            token_payload = {field: payload[field].strip() for field in ("vat", "code")}
 
         try:
             form_url = _custom_form_url(payload.get("formUrl"))
@@ -265,17 +277,17 @@ def create_app() -> Flask:
         upstream_started_at = time.perf_counter()
         logger.info(
             "operation=jwt_api outcome=request_started target=%s",
-            _loggable_api_url(jwt_api_endpoint),
+            _loggable_api_url(endpoint),
         )
         try:
             response = requests.post(
-                jwt_api_endpoint,
+                endpoint,
                 headers={
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                     "X-Admin-Gateway-Token": admin_gateway_secret,
                 },
-                json={"ff": [feature_flag], **({"expiresAt": expires_at} if expires_at else {})},
+                json={**token_payload, **({"expiresAt": expires_at} if expires_at else {})},
                 timeout=10,
             )
         except requests.RequestException as error:
@@ -354,11 +366,23 @@ def create_app() -> Flask:
 
     @app.post("/api/links/social-tariff")
     def social_tariff_link() -> object:
-        return generate_link("socialTariffByPass", "social_tariff")
+        return generate_link({"ff": ["socialTariffByPass"]}, "social_tariff")
 
     @app.post("/api/links/send-signature")
     def send_signature_link() -> object:
-        return generate_link("sendSignaturit", "send_signature")
+        return generate_link({"ff": ["sendSignaturit"]}, "send_signature")
+
+    @app.post("/api/links/activist-sponsor")
+    def activist_sponsor_link() -> object:
+        return generate_link(
+            {"vat": activist_sponsor_vat, "code": activist_sponsor_code},
+            "activist_sponsor",
+            sponsors_api_endpoint,
+        )
+
+    @app.post("/api/links/sponsor")
+    def sponsor_link() -> object:
+        return generate_link({}, "sponsor", sponsors_api_endpoint)
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(error: Exception) -> object:

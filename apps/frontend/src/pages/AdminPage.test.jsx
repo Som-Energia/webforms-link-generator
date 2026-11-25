@@ -10,6 +10,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   generateSendSignatureLink,
   generateSocialTariffLink,
+  generateActivistSponsorLink,
+  generateSponsorLink,
 } from "../api/links";
 import { version } from "../../package.json";
 import { AdminPage, DEFAULT_FORM_URL, FORM_URL_ERROR } from "./AdminPage";
@@ -23,6 +25,8 @@ const ISO_DATE = expect.stringMatching(
 vi.mock("../api/links", () => ({
   generateSendSignatureLink: vi.fn(),
   generateSocialTariffLink: vi.fn(),
+  generateActivistSponsorLink: vi.fn(),
+  generateSponsorLink: vi.fn(),
 }));
 
 afterEach(() => {
@@ -32,6 +36,68 @@ afterEach(() => {
 });
 
 describe("AdminPage", () => {
+  it("generates activist sponsor links without fields and with selectable expiry", async () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    generateActivistSponsorLink.mockResolvedValue(
+      `${DEFAULT_FORM_URL}&token=sponsor-token`,
+    );
+    render(<AdminPage />);
+
+    const card = within(
+      screen
+        .getByRole("heading", { name: "Enllaç de sòcia activista" })
+        .closest("article"),
+    );
+    expect(card.queryByLabelText("NIF")).toBeNull();
+    expect(card.queryByLabelText("Núm. de sòcia")).toBeNull();
+
+    expect(card.getByRole("radio", { name: "1 dia" }).checked).toBe(true);
+    expect(card.getByRole("radio", { name: "7 dies" })).not.toBeNull();
+    fireEvent.click(card.getByRole("radio", { name: "30 dies" }));
+    const startedAt = Date.now();
+    fireEvent.click(card.getByRole("button", { name: "Genera l'enllaç" }));
+
+    await waitFor(() =>
+      expect(generateActivistSponsorLink).toHaveBeenCalledWith("", ISO_DATE),
+    );
+    const expiresAt = Date.parse(generateActivistSponsorLink.mock.calls[0][1]);
+    expect(expiresAt).toBeGreaterThanOrEqual(startedAt + 30 * 86400000);
+    expect(expiresAt).toBeLessThanOrEqual(Date.now() + 30 * 86400000);
+    expect(await card.findByRole("link")).toHaveProperty(
+      "href",
+      `${DEFAULT_FORM_URL}&token=sponsor-token&owner=ada-lovelace&tt=sponsoredContract`,
+    );
+  });
+
+  it("requires editable sponsor fields and generates a contract sponsor link", async () => {
+    window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
+    generateSponsorLink.mockResolvedValue(`${DEFAULT_FORM_URL}&token=custom-sponsor`);
+    render(<AdminPage />);
+    const card = within(screen.getByRole("heading", { name: "Apadrina un contracte" }).closest("article"));
+    const vat = card.getByRole("textbox", { name: "NIF" });
+    const code = card.getByRole("textbox", { name: "Núm. de sòcia" });
+    const button = card.getByRole("button", { name: "Genera l'enllaç" });
+    expect(vat.value).toBe("");
+    expect(code.value).toBe("");
+    expect(vat.required).toBe(true);
+    expect(code.required).toBe(true);
+    expect(button.disabled).toBe(true);
+    fireEvent.change(vat, { target: { value: "custom-nif" } });
+    expect(button.disabled).toBe(true);
+    fireEvent.change(code, { target: { value: "   " } });
+    expect(button.disabled).toBe(true);
+    fireEvent.change(code, { target: { value: "custom-code" } });
+    expect(button.disabled).toBe(false);
+    expect(card.getByRole("radio", { name: "1 dia" }).checked).toBe(true);
+    expect(card.getByRole("radio", { name: "7 dies" })).not.toBeNull();
+    fireEvent.click(card.getByRole("radio", { name: "30 dies" }));
+    fireEvent.click(button);
+    await waitFor(() => expect(generateSponsorLink).toHaveBeenCalledWith("", ISO_DATE, "custom-nif", "custom-code"));
+    expect(await card.findByRole("link")).toHaveProperty("href", `${DEFAULT_FORM_URL}&token=custom-sponsor&owner=ada-lovelace&tt=sponsoredContract`);
+    fireEvent.change(vat, { target: { value: "" } });
+    expect(button.disabled).toBe(true);
+  });
+
   it("displays the frontend version", () => {
     window.localStorage.setItem(OWNER_NAME_STORAGE_KEY, "Ada Lovelace");
     render(<AdminPage />);
@@ -148,7 +214,7 @@ describe("AdminPage", () => {
       "",
     );
     const socialTariffCard = screen
-      .getByRole("heading", { name: "Tarifa social" })
+      .getByRole("heading", { name: "Bo social" })
       .closest("article");
     fireEvent.click(
       within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }),
@@ -170,7 +236,7 @@ describe("AdminPage", () => {
     render(<AdminPage />);
 
     const socialTariffCard = screen
-      .getByRole("heading", { name: "Tarifa social" })
+      .getByRole("heading", { name: "Bo social" })
       .closest("article");
     const sendSignatureCard = screen
       .getByRole("heading", { name: "Enviament de signatura" })
@@ -185,29 +251,31 @@ describe("AdminPage", () => {
     );
 
     const socialTariffWithOwner =
-      "https://forms.example.test/alta?token=social-token&uid=3300&owner=ada-lovelace#step-2";
+      "https://forms.example.test/alta?token=social-token&uid=3300&owner=ada-lovelace&tt=featureFlag#step-2";
     const sendSignatureWithOwner =
-      "https://forms.example.test/signatura?owner=ada-lovelace&token=signature-token&source=email#final";
+      "https://forms.example.test/signatura?owner=ada-lovelace&token=signature-token&source=email&tt=featureFlag#final";
     await screen.findByRole("link", { name: socialTariffWithOwner });
     await screen.findByRole("link", { name: sendSignatureWithOwner });
 
     fireEvent.click(screen.getByLabelText("Afegir el meu usuari"));
 
     await screen.findByRole("link", {
-      name: "https://forms.example.test/alta?token=social-token&uid=3300#step-2",
+      name: "https://forms.example.test/alta?token=social-token&uid=3300&tt=featureFlag#step-2",
     });
     await screen.findByRole("link", {
-      name: "https://forms.example.test/signatura?token=signature-token&source=email#final",
+      name: "https://forms.example.test/signatura?token=signature-token&source=email&tt=featureFlag#final",
     });
 
     fireEvent.click(screen.getByLabelText("Afegir el meu usuari"));
 
     expect(
-      await screen.findByRole("link", { name: socialTariffWithOwner }),
+      await screen.findByRole("link", {
+        name: "https://forms.example.test/alta?token=social-token&uid=3300&tt=featureFlag&owner=ada-lovelace#step-2",
+      }),
     ).not.toBeNull();
     expect(
       await screen.findByRole("link", {
-        name: "https://forms.example.test/signatura?token=signature-token&source=email&owner=ada-lovelace#final",
+        name: "https://forms.example.test/signatura?token=signature-token&source=email&tt=featureFlag&owner=ada-lovelace#final",
       }),
     ).not.toBeNull();
   });
@@ -304,7 +372,7 @@ describe("AdminPage", () => {
     render(<AdminPage />);
 
     const socialTariffCard = screen
-      .getByRole("heading", { name: "Tarifa social" })
+      .getByRole("heading", { name: "Bo social" })
       .closest("article");
     expect(socialTariffCard).not.toBeNull();
     expect(
@@ -326,7 +394,7 @@ describe("AdminPage", () => {
     await waitFor(() => {
       expect(generateSocialTariffLink).toHaveBeenCalledWith(formUrl, ISO_DATE);
     });
-    const generatedUrl = `${formUrl}&token=jwt-token&owner=ada-lovelace`;
+    const generatedUrl = `${formUrl}&token=jwt-token&owner=ada-lovelace&tt=featureFlag`;
     const generatedLink = within(socialTariffCard).getByRole("link", {
       name: generatedUrl,
     });
@@ -374,7 +442,7 @@ describe("AdminPage", () => {
     await waitFor(() => {
       expect(generateSendSignatureLink).toHaveBeenCalledWith(formUrl, ISO_DATE);
     });
-    const generatedUrl = `${formUrl}&token=jwt-token&owner=ada-lovelace`;
+    const generatedUrl = `${formUrl}&token=jwt-token&owner=ada-lovelace&tt=featureFlag`;
     const generatedLink = within(sendSignatureCard).getByRole("link", {
       name: generatedUrl,
     });
@@ -550,7 +618,7 @@ describe("AdminPage", () => {
     render(<AdminPage />);
 
     const socialTariffCard = screen
-      .getByRole("heading", { name: "Tarifa social" })
+      .getByRole("heading", { name: "Bo social" })
       .closest("article");
     fireEvent.click(
       within(socialTariffCard).getByRole("button", { name: "Genera l'enllaç" }),
@@ -558,7 +626,7 @@ describe("AdminPage", () => {
 
     expect(generateSocialTariffLink).toHaveBeenCalledWith("", ISO_DATE);
     await within(socialTariffCard).findByRole("link", {
-      name: "https://forms.example.test/alta?token=jwt-token&owner=ada-lovelace&lead_tag=campanya-tardor",
+      name: "https://forms.example.test/alta?token=jwt-token&owner=ada-lovelace&lead_tag=campanya-tardor&tt=featureFlag",
     });
 
     fireEvent.click(
@@ -567,7 +635,7 @@ describe("AdminPage", () => {
 
     expect(
       within(socialTariffCard).getByRole("link", {
-        name: "https://forms.example.test/alta?token=jwt-token&owner=ada-lovelace",
+        name: "https://forms.example.test/alta?token=jwt-token&owner=ada-lovelace&tt=featureFlag",
       }),
     ).not.toBeNull();
   });
@@ -589,6 +657,15 @@ describe("AdminPage", () => {
         name: "Quin enllaç he de fer servir?",
       }),
     ).not.toBeNull();
+    expect(
+      within(dialog).getByRole("heading", {
+        name: "Enllaç de sòcia activista",
+      }),
+    ).not.toBeNull();
+    expect(
+      within(dialog).getByText(/les dades d'apadrinament estan predefinides/)
+        .textContent,
+    ).toContain("1 dia, 7 dies o 30 dies");
     expect(document.activeElement).toBe(
       within(dialog).getByRole("button", { name: "Tanca l'ajuda" }),
     );

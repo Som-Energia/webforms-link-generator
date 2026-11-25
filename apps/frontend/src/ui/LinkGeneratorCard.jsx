@@ -64,7 +64,7 @@ export function updateLinkOwner(link, owner) {
   return updateLinkParam(link, "owner", owner);
 }
 
-export function LinkGeneratorCard({ title, description, generateLink, owner, leadTag, expiryOptions, disabled = false }) {
+export function LinkGeneratorCard({ title, description, children, generateLink, owner, leadTag, tt, expiryOptions, disabled = false }) {
   const expiryChoices = resolveExpiryOptions(expiryOptions);
   const hasExpiryChoice = expiryChoices.length > 0;
   const [selectedExpiry, setSelectedExpiry] = useState(expiryChoices[0] ?? DEFAULT_EXPIRY_MINUTES);
@@ -130,7 +130,11 @@ export function LinkGeneratorCard({ title, description, generateLink, owner, lea
       if (!isMounted.current) return;
 
       const { owner: currentOwner, leadTag: currentLeadTag } = latestLinkParams.current;
-      setLink(updateLinkParam(updateLinkOwner(generatedLink, currentOwner), LEAD_TAG_PARAM, currentLeadTag));
+      setLink(updateLinkParam(
+        updateLinkParam(updateLinkOwner(generatedLink, currentOwner), LEAD_TAG_PARAM, currentLeadTag),
+        "tt",
+        tt,
+      ));
 
       setExpiresAt(linkExpiresAt);
       setRemainingSeconds(Math.max(0, Math.ceil((linkExpiresAt - Date.now()) / 1000)));
@@ -151,6 +155,7 @@ export function LinkGeneratorCard({ title, description, generateLink, owner, lea
     <article className="generator-card">
       <h2>{title}</h2>
       <p>{description}</p>
+      {children}
 
       <div className="generator-actions">
         <button

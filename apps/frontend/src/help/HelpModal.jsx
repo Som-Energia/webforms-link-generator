@@ -8,16 +8,22 @@ const LINK_TYPES = [
       "És l'enllaç al formulari de contractació amb el teu usuari afegit. No caduca: el pots enviar quan vulguis i tantes vegades com calgui.",
   },
   {
-    title: "Tarifa social",
+    title: "Bo social",
     when: "Quan la persona té el bo social.",
     details:
-      "Normalment el formulari no deixa continuar si el CUPS (el codi del punt de subministrament que surt a la factura de la llum) té tarifa social. Amb aquest enllaç, sí que es pot continuar.",
+      "Normalment el formulari no deixa continuar si el CUPS (el codi del punt de subministrament que surt a la factura de la llum) té bo social. Amb aquest enllaç, sí que es pot continuar.",
   },
   {
     title: "Enviament de signatura",
     when: "Quan la persona no pot signar en aquell moment.",
     details:
       "Al final del formulari apareix un botó per enviar la signatura per correu electrònic, perquè la persona pugui signar més tard des del seu correu.",
+  },
+  {
+    title: "Enllaç de sòcia activista",
+    when: "Per a sòcies activistes que comparteixen l'enllaç en fires o altres activitats.",
+    details:
+      "Permet apadrinar els contractes de les persones amb qui es comparteix l'enllaç. Pots triar una caducitat d'1 dia, 7 dies o 30 dies. De moment, les dades d'apadrinament estan predefinides i no cal omplir cap formulari.",
   },
 ];
 
@@ -71,7 +77,8 @@ export function HelpModal({ onClose }) {
             </p>
             <p>
               També pots crear enllaços especials per a casos concrets, com
-              persones amb bo social o que necessiten signar més tard.
+              persones amb bo social, que necessiten signar més tard o que
+              contracten amb l'apadrinament d'una sòcia activista.
             </p>
           </section>
 
@@ -79,17 +86,17 @@ export function HelpModal({ onClose }) {
             <h2 id="help-steps">Pas a pas</h2>
             <ol className="help-steps">
               <li>
-                <strong>Identifica't.</strong> La primera vegada et demanarem
-                el teu usuari de l'ERP. Es queda guardat en aquest navegador.
-                Si l'has de canviar, fes clic al teu nom, a dalt a la dreta, i
-                tria <em>Editar</em>.
+                <strong>Identifica't.</strong> La primera vegada et demanarem el
+                teu usuari de l'ERP. Es queda guardat en aquest navegador. Si
+                l'has de canviar, fes clic al teu nom, a dalt a la dreta, i tria{" "}
+                <em>Editar</em>.
               </li>
               <li>
                 <strong>Tria el formulari (només si cal).</strong> Si deixes la
                 casella de l'adreça buida, es fa servir el formulari de
-                contractació domèstica, que és el més habitual. Si necessites
-                un altre formulari, obre'l al navegador, copia l'adreça de dalt
-                de tot i enganxa-la a la casella.
+                contractació domèstica, que és el més habitual. Si necessites un
+                altre formulari, obre'l al navegador, copia l'adreça de dalt de
+                tot i enganxa-la a la casella.
               </li>
               <li>
                 <strong>Decideix si vols afegir el teu usuari.</strong> Amb
@@ -98,12 +105,21 @@ export function HelpModal({ onClose }) {
                 vulguis que la contractació consti com a teva.
               </li>
               <li>
-                <strong>Si l'enllaç és per a una campanya, afegeix-hi
-                l'etiqueta.</strong> Activa <em>Afegir etiqueta de campanya</em>{" "}
-                i escriu l'etiqueta que t'hagin indicat. Així, a l'ERP es podrà
-                saber de quina campanya ve cada contractació. L'etiqueta queda
-                guardada per a la propera vegada; recorda desactivar-la quan la
-                campanya s'acabi.
+                <strong>
+                  Si l'enllaç és per a una campanya, afegeix-hi l'etiqueta.
+                </strong>{" "}
+                Activa <em>Afegir etiqueta de campanya</em> i escriu l'etiqueta
+                que t'hagin indicat. Així, a l'ERP es podrà saber de quina
+                campanya ve cada contractació. L'etiqueta queda guardada per a
+                la propera vegada; recorda desactivar-la quan la campanya
+                s'acabi.
+              </li>
+              <li>
+                <strong>Genera l'enllaç especial que necessitis.</strong> Tria
+                la targeta corresponent i la caducitat abans de prémer{" "}
+                <em>Genera l'enllaç</em>. La targeta d'enllaç de sòcia activista
+                fa servir el mateix formulari de destí i les mateixes opcions
+                d'usuari i etiqueta de campanya que la resta.
               </li>
               <li>
                 <strong>Copia l'enllaç i envia'l.</strong> Fes clic al botó de
@@ -130,16 +146,18 @@ export function HelpModal({ onClose }) {
             <h2 id="help-tips">Cal que tinguis en compte</h2>
             <ul className="help-tips">
               <li>
-                Els enllaços de <strong>tarifa social</strong> i{" "}
-                <strong>enviament de signatura</strong> caduquen al cap de 30
-                minuts. Crea'ls just abans d'enviar-los. Si un enllaç ha
-                caducat, prem una altra vegada <em>Genera l'enllaç</em> per
-                tenir-ne un de nou.
+                La caducitat depèn de l'opció que triïs:{" "}
+                <strong>bo social</strong> permet 30 minuts o 1 hora;{" "}
+                <strong>enviament de signatura</strong>, 30 minuts, 1 hora, 7
+                dies o 30 dies; i <strong>enllaç de sòcia activista</strong>, 1
+                dia, 7 dies o 30 dies. El compte enrere indica quant temps
+                queda. Si un enllaç ha caducat, prem una altra vegada{" "}
+                <em>Genera l'enllaç</em> per tenir-ne un de nou.
               </li>
               <li>
-                Si l'adreça del formulari no és correcta, la casella es posa
-                en vermell i no es poden crear enllaços fins que la corregeixis
-                o l'esborris amb la creu.
+                Si l'adreça del formulari no és correcta, la casella es posa en
+                vermell i no es poden crear enllaços fins que la corregeixis o
+                l'esborris amb la creu.
               </li>
               <li>
                 Si apareix un missatge d'error en crear un enllaç, torna-ho a
