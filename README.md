@@ -13,6 +13,7 @@ Single-container monorepo for an admin-only link generator.
   - [Start](#start)
   - [Local URLs and Proxy](#local-urls-and-proxy)
   - [Troubleshooting and Limits](#troubleshooting-and-limits)
+- [Link Generation and External API](#link-generation-and-external-api)
 - [Run Locally with Docker](#run-locally-with-docker)
   - [Configure and Start](#configure-and-start)
   - [Health and Logs](#health-and-logs)
@@ -35,7 +36,7 @@ Single-container monorepo for an admin-only link generator.
 ### Prerequisites
 
 - Python 3.12 and Poetry.
-- Node.js 24 LTS and npm.
+- Node.js `>=24.15.0 <25` and npm.
 - GNU Make, `setsid` (provided by util-linux on Linux), and standard POSIX utilities (`sh`, `mkfifo`, and `sed`) for the root Make workflow.
 - Access to the external JWT API configured below.
 
@@ -58,7 +59,7 @@ Set these values in `apps/backend/.env` before starting the local backend:
 | `ADMIN_PASSWORD`       | Password for the admin login.                                             |
 | `SESSION_SECRET`       | Secret of at least 32 characters.                                         |
 | `ADMIN_GATEWAY_SECRET` | Token sent to the JWT API as `X-Admin-Gateway-Token`.                     |
-| `API_URL`              | Reachable external API base URL; the backend adds `/feature-flags/token`. |
+| `API_URL`              | Reachable external API base URL, without a token endpoint suffix; see [API endpoints](#link-generation-and-external-api). |
 | `ACTIVIST_SPONSOR_VAT` | NIF used by the activist sponsor card.                                   |
 | `ACTIVIST_SPONSOR_CODE` | Member number used by the activist sponsor card.                        |
 | `COOKIE_SECURE`        | Set to `false` for local HTTP; leave `true` for HTTPS deployments.        |
@@ -100,8 +101,23 @@ Vite proxies browser requests beginning with `/api` and `/auth` to `http://local
 - A startup error such as `Missing ADMIN_PASSWORD` means a required variable is absent or empty. Confirm that you configured the values in `apps/backend/.env`; `SESSION_SECRET` must also meet the 32-character minimum.
 - Login will not persist over `http://localhost:5173` if `COOKIE_SECURE=true`, because secure cookies require HTTPS. Set it to `false` only for local HTTP.
 - Opening the Flask root URL without a frontend build returns `503 Frontend build not found.` This is expected during `make dev`; use Vite at port `5173`. Build the frontend with `npm --prefix apps/frontend run build` when you need Flask to serve the UI.
-- Link generation depends on the external API. The backend always requests `<API_URL>/feature-flags/token`; an unreachable API, a non-success response, or an invalid token response produces a `502`. Confirm `API_URL` and `ADMIN_GATEWAY_SECRET`.
+- Token-based link generation depends on the external API. The backend requests either `<API_URL>/feature-flags/token` or `<API_URL>/sponsored-contract/token`, depending on the link type; connection failures, upstream HTTP errors, or a missing/invalid `data.token` value produce a `502`. Confirm `API_URL` and `ADMIN_GATEWAY_SECRET`.
 - The backend request to the JWT API has a 10-second timeout.
+
+## Link Generation and External API
+
+Set `API_URL` to the external API base URL, for example `https://example.com/admin/api`. Do not include `/feature-flags/token` or `/sponsored-contract/token`: the backend appends the appropriate path.
+
+| Backend route (POST) | External API path (POST) | Token payload |
+| --- | --- | --- |
+| `/api/links/social-tariff` | `/feature-flags/token` | `{"ff":["socialTariffByPass"]}` |
+| `/api/links/send-signature` | `/feature-flags/token` | `{"ff":["sendSignaturit"]}` |
+| `/api/links/activist-sponsor` | `/sponsored-contract/token` | `vat` and `code` from `ACTIVIST_SPONSOR_VAT` and `ACTIVIST_SPONSOR_CODE`. |
+| `/api/links/sponsor` | `/sponsored-contract/token` | Non-empty `vat` and `code` strings supplied in the request. |
+
+All backend routes above require an authenticated session. Upstream requests send JSON with the `X-Admin-Gateway-Token` header set to `ADMIN_GATEWAY_SECRET`. The expected response is `{"data":{"token":"<token>"}}`; the backend checks that the token is a non-empty string, not its JWT signature or claims.
+
+Requests may include `expiresAt` (a future, timezone-aware ISO-8601 timestamp, forwarded in UTC) and `formUrl` (an HTTPS destination URL, not sent to the token API). The backend returns `{"link":"<destination URL with token>"}`. Without `formUrl`, it uses the default domestic contracting form. Personal links are assembled in the browser without requesting a token from the backend or external API.
 
 ## Run Locally with Docker
 
@@ -115,7 +131,7 @@ If you have not created the backend environment file during local setup, copy it
 cp apps/backend/.env.example apps/backend/.env
 ```
 
-Configure `apps/backend/.env` using the [Setup variable table](#setup): set an admin password, a `SESSION_SECRET` of at least 32 characters, a real `API_URL` reachable from the container, and the matching `ADMIN_GATEWAY_SECRET`. Link generation requires access to that API; placeholder credentials do not provide a working integration.
+Configure `apps/backend/.env` using the [Setup variable table](#setup): set an admin password, a `SESSION_SECRET` of at least 32 characters, a real `API_URL` reachable from the container, the matching `ADMIN_GATEWAY_SECRET`, and the activist sponsor's `ACTIVIST_SPONSOR_VAT` and `ACTIVIST_SPONSOR_CODE`. Link generation requires access to that API; placeholder credentials do not provide a working integration.
 
 The environment file stays outside the image: `.dockerignore` excludes it from the build context, and `--env-file` injects its values only at runtime. No credentials are needed for the image build.
 
@@ -177,7 +193,7 @@ Confirm the displayed image reference with `y`, `Y`, `s`, or `S`, then enter the
 
 1. Reads and displays the current backend and frontend versions.
 2. Prompts for `New shared version` and rejects an empty value.
-3. Checks that Git tag `<version>` does not already exist.
+3. Checks that Git tag `v<version>` does not already exist (see the caveat below).
 4. Runs `poetry version <version>` in `apps/backend`.
 5. Runs `npm --prefix apps/frontend version <version> --no-git-tag-version`.
 6. Commits `apps/backend/pyproject.toml`, `apps/frontend/package.json`, and `apps/frontend/package-lock.json` with `🔖 bump to <version>`.
@@ -190,7 +206,7 @@ git push
 git push --tags
 ```
 
-> **Important:** the current target checks for `<version>` but creates `<version>` without the `v` prefix. Use the exact tag that `make version` creates, or pass the image tag explicitly to the publishing script.
+> **Important:** the current target checks for `v<version>` but creates `<version>` without the `v` prefix. Before running it, also check that the unprefixed tag is unused (`git tag --list '<version>'`); otherwise tag creation can fail after the version commit. Use the exact tag that `make version` creates, or pass the image tag explicitly to the publishing script.
 
 ### Harbor Publishing Details
 
@@ -206,7 +222,7 @@ Pass an image tag as the first argument to avoid an interactive tag prompt:
 ./scripts/publish-images.sh 0.1.4
 ```
 
-Without an argument, the script suggests `git describe --tags --always` as the image tag; pressing Enter accepts that suggestion. Before it clones or reuses its working copy, logs in, builds, or pushes, it displays `IMAGE_URL:TAG` and asks for confirmation. Any answer other than `y`, `Y`, `s`, or `S` cancels publication.
+Without an argument, the script suggests `git describe --tags --always` as the image tag; pressing Enter accepts that suggestion. Before it logs in, builds the current checkout, or pushes, it displays `IMAGE_URL:TAG` and asks for confirmation. Any answer other than `y`, `Y`, `s`, or `S` cancels publication.
 
 After confirmation, the script:
 
@@ -226,7 +242,7 @@ Use `docker-compose.portainer.yml` as the stack definition. The file stays uncha
 
 ```yaml
 services:
-  webforms-links-generator:
+  webforms-link-generator:
     image: ${IMAGE_URL:?set IMAGE_URL}:${IMAGE_TAG:?set IMAGE_TAG}
 ```
 
@@ -239,9 +255,24 @@ IMAGE_TAG=0.1.4
 
 Set `PORTAINER_URL`, `PORTAINER_API_TOKEN`, and `PORTAINER_STACK_NAME` in the local `.env` used by `scripts/publish-images.sh`. The redeploy script requires `curl` and `jq`. Each publication then changes only `IMAGE_TAG` and forces Portainer to pull and redeploy the exact version just pushed. To roll back, redeploy the stack after setting `IMAGE_TAG` to a previously published tag.
 
-Keep `docker-compose.yml` for local builds from this repository.
+Also set all required application variables from the [Setup table](#setup) in the Portainer stack environment. The stack fixes the application `PORT` to `3000`; keep `COOKIE_SECURE=true` when served over HTTPS.
 
-Set all required environment variables in Portainer before deploy. Keep `COOKIE_SECURE=true` when the app is served over HTTPS.
+The supplied stack targets Docker Swarm with Traefik. It requires an existing external network named `traefik` and these routing variables:
+
+| Variable | Value |
+| --- | --- |
+| `APP_HOSTNAME` | Public hostname, without a scheme or path. |
+| `TRAEFIK_SERVICE` | Traefik service name; use `webforms-link-generator` to match the supplied service label. |
+| `TRAEFIK_ENTRYPOINT` | HTTPS entrypoint configured in Traefik (for example `websecure`). |
+| `TRAEFIK_PORT` | `3000`, matching the application's internal port. |
+
+Keep `docker-compose.yml` for local builds from this repository. Compose reads the root `.env` by default, not `apps/backend/.env`; to use the application environment file over local HTTP, run:
+
+```bash
+COOKIE_SECURE=false docker compose --env-file apps/backend/.env up --build -d
+```
+
+This local Compose configuration publishes port `3000` on all host interfaces; it does not use the loopback-only port `13000` mapping from the Docker example above.
 
 Portainer may also need registry credentials configured so it can pull from Harbor.
 
@@ -257,6 +288,7 @@ Run these commands from the repository root:
 
 ```bash
 (cd apps/backend && poetry run pytest)
+npm --prefix apps/frontend test
 npm --prefix apps/frontend run build
-docker compose build
+docker compose --env-file apps/backend/.env build
 ```
