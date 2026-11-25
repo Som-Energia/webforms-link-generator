@@ -480,7 +480,7 @@ export function AdminPage() {
         />
         <LinkGeneratorCard
           title="Enllaç de sòcia activista"
-          tt="sponsor"
+          tt="sponsoredContract"
           description="Genera un enllaç perquè una sòcia activista apadrini els contractes de les persones amb qui el comparteixi."
           generateLink={(expiresAt) =>
             generateActivistSponsorLink(formUrl, expiresAt)
@@ -492,7 +492,7 @@ export function AdminPage() {
         />
         <LinkGeneratorCard
           title="Apadrina un contracte"
-          tt="sponsor"
+          tt="sponsoredContract"
           description="Genera un enllaç per apadrinar un contracte amb el NIF i el número de sòcia indicats."
           generateLink={(expiresAt) =>
             generateSponsorLink(
