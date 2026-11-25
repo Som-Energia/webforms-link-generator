@@ -65,7 +65,7 @@ describe("AdminPage", () => {
     expect(expiresAt).toBeLessThanOrEqual(Date.now() + 30 * 86400000);
     expect(await card.findByRole("link")).toHaveProperty(
       "href",
-      `${DEFAULT_FORM_URL}&token=sponsor-token&owner=ada-lovelace&tt=sponsor`,
+      `${DEFAULT_FORM_URL}&token=sponsor-token&owner=ada-lovelace&tt=sponsoredContract`,
     );
   });
 
@@ -93,7 +93,7 @@ describe("AdminPage", () => {
     fireEvent.click(card.getByRole("radio", { name: "30 dies" }));
     fireEvent.click(button);
     await waitFor(() => expect(generateSponsorLink).toHaveBeenCalledWith("", ISO_DATE, "custom-nif", "custom-code"));
-    expect(await card.findByRole("link")).toHaveProperty("href", `${DEFAULT_FORM_URL}&token=custom-sponsor&owner=ada-lovelace&tt=sponsor`);
+    expect(await card.findByRole("link")).toHaveProperty("href", `${DEFAULT_FORM_URL}&token=custom-sponsor&owner=ada-lovelace&tt=sponsoredContract`);
     fireEvent.change(vat, { target: { value: "" } });
     expect(button.disabled).toBe(true);
   });
